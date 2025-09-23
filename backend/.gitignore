@@ -7,18 +7,39 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node modules
+node_modules/
+
+# Build output directories
+dist/
+dist-ssr/
+
+# Local environment files
 *.local
+*.env
+.env.*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
+nodemon-debug.json
+package-lock.json
+*.sublime-workspace
+nodemon.json
+uploads/
+# Windows-specific files
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+*.pth
+__pycache__/
+ckd_tabtransformer_artifacts_7
+
+# macOS specific files
 *.sw?

@@ -1,0 +1,318 @@
+.analytics-page {
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.analytics-header {
+  margin-bottom: 32px;
+}
+
+.analytics-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.analytics-header p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.analytics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chart-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.chart-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.timeframe-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.timeframe-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timeframe-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.timeframe-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.chart-container {
+  width: 100%;
+  height: 500px;
+  position: relative;
+}
+
+.chart-wrapper {
+  display: flex;
+  height: 100%;
+  gap: 16px;
+}
+
+.y-axis-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  width: 20px;
+}
+
+.chart-area {
+  flex: 1;
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ckd-zones {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  opacity: 0.1;
+}
+
+.zone-1 {
+  background: #22c55e;
+  top: 0;
+  height: 10%;
+}
+
+.zone-2 {
+  background: #84cc16;
+  top: 10%;
+  height: 30%;
+}
+
+.zone-3 {
+  background: #f97316;
+  top: 40%;
+  height: 30%;
+}
+
+.zone-4 {
+  background: #ef4444;
+  top: 70%;
+  height: 15%;
+}
+
+.zone-5 {
+  background: #991b1b;
+  top: 85%;
+  height: 15%;
+}
+
+.y-axis-ticks {
+  position: absolute;
+  left: -40px;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  z-index: 3;
+}
+
+.y-tick {
+  position: absolute;
+  right: 0;
+  font-size: 12px;
+  color: #6b7280;
+  transform: translateY(-50%);
+}
+
+.chart-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.data-point {
+  cursor: pointer;
+  transition: r 0.2s;
+}
+
+.data-point:hover {
+  r: 8;
+}
+
+.x-axis-dates {
+  position: absolute;
+  bottom: -30px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  z-index: 3;
+}
+
+.x-date {
+  position: absolute;
+  font-size: 12px;
+  color: #6b7280;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.summary-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.summary-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.latest-reading p {
+  font-size: 16px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.stage-indicator {
+  font-weight: 600;
+}
+
+.trend-analysis p {
+  font-size: 16px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.6;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #2563eb;
+}
+
+.learn-more-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.learn-more-link:hover {
+  color: #1d4ed8;
+}
+
+.educational-link {
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: 16px;
+  }
+  
+  .analytics-header h1 {
+    font-size: 24px;
+  }
+  
+  .chart-section,
+  .summary-section {
+    padding: 16px;
+  }
+  
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .timeframe-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .timeframe-btn {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .chart-container {
+    height: 400px;
+  }
+  
+  .y-axis-label {
+    font-size: 12px;
+  }
+  
+  .x-date {
+    font-size: 10px;
+  }
+}
