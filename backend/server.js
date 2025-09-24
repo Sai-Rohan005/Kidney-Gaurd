@@ -283,8 +283,8 @@ app.post('/clinicalfile',async(req,res)=>{
 
 app.post('/bookappointment',async(req,res)=>{
   try{
-    const {doctor,date,time}=req.body;
-    console.log(doctor,date,time);
+    const {doctor,date,time,problem}=req.body;
+    // console.log(doctor,date,time);
     const sessionData = await getSession(req.session.user.sessionToken);
     let pdetails = await patient_details.findOne({ email: sessionData.username });
     let ddetails=await doctor_details.findOne({email:doctor});
@@ -300,7 +300,7 @@ app.post('/bookappointment',async(req,res)=>{
       }
     })
     
-    const appointment={patientEmail:sessionData.username,date:new Date(date).toISOString().split("T")[0],time:time,status:"Scheduled"};
+    const appointment={patientEmail:sessionData.username,date:new Date(date).toISOString().split("T")[0],time:time,status:"Scheduled",problem:problem};
     ddetails.appointments.push(appointment);
 
     if(!pdetails){
@@ -314,7 +314,7 @@ app.post('/bookappointment',async(req,res)=>{
       await newPatient.save();
     }
     else{
-      const appointment={doctor_email:doctor,date:new Date(date).toISOString().split("T")[0],time:time,status:"Scheduled"};
+      const appointment={doctor_email:doctor,date:new Date(date).toISOString().split("T")[0],time:time,status:"Scheduled",problem:problem};
       pdetails.doctor_email=doctor;
       pdetails.appointment_dates.push(appointment);
       await pdetails.save();
@@ -345,8 +345,62 @@ app.get('/getappointments',async(req,res)=>{
   }
 })
 
+app.get('/getdoctorappointments',async(req,res)=>{
+  const sessionData = await getSession(req.session.user.sessionToken);
+  try{
+    let ddetails = await doctor_details.findOne({ email: sessionData.username });
+    if(!ddetails){
+      return res.json({message:"Doctor details not found",status:404});
+    }
+    if(ddetails.appointments.length===0){
+      return res.json({message:"No appointments found",status:404});
+    }
+    return res.json({appointments:ddetails.appointments,message:"Appointments found",status:200});
+  }catch(err){
+    console.log(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+})
 
+app.post('/updatedoctorappointmentstatus',async(req,res)=>{
+  const sessionData = await getSession(req.session.user.sessionToken);
+  try{
+    const {patientEmail,date,time,status}=req.body;
+    let ddetails = await doctor_details.findOne({ email: sessionData.username });
+    if(!ddetails){
+      return res.json({message:"Doctor details not found",status:404});
+    }
+    let pdetails = await patient_details.findOne({ email: patientEmail });
+    if(!pdetails){
+      return res.json({message:"Patient details not found",status:404});
+    }
+    let appointmentfound=false;
+    ddetails.appointments.map((d)=>{
+      if(d.patientEmail===patientEmail){
+        d.status=status;
+        appointmentfound=true;
+      }
+    })
+    if(!appointmentfound){
+      return res.json({message:"Appointment not found",status:404});
+    }
+    ddetails.markModified("appointments");
+    await ddetails.save();
 
+    pdetails.appointment_dates.map((d)=>{
+      if(d.doctor_email===sessionData.username){
+        d.status=status;
+      }
+    })
+    pdetails.markModified("appointment_dates");
+    await pdetails.save();
+
+    return res.json({message:"Appointment status updated successfully",status:200});
+  }catch(err){
+    console.log(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+})
 
 
 

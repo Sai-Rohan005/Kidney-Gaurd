@@ -43,3 +43,22 @@ ckd_tabtransformer_artifacts_7
 
 # macOS specific files
 *.sw?
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model artifacts (example paths)
+backend/python/routes/ckd_tabtransformer_artifacts_7/
+backend/python/routes/ckd_tabtransformer_artifacts_7/**
+
+# Large model files
+*.pth
+*.pt
+*.pkl
+
+# Ignore all uploads or other heavy folders
+uploads/
+

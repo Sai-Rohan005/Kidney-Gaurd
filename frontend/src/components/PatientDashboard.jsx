@@ -40,6 +40,12 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
 
   const [fupload, setfupload] = useState(0);
 
+  const [problem, setProblem] = useState(""); // variable to store input value
+
+  const handleProblemChange = (e) => {
+    setProblem(e.target.value); // update variable whenever user types
+  };
+
   // Update activeTab based on sidebar navigation
   useEffect(() => {
     if (activeView === 'upload') {
@@ -286,9 +292,9 @@ const handleChange = (e) => {
     if (fileInput) fileInput.value = ''
   }
 
-  const handleBookAppointment = async(doctor, date, time) => {
+  const handleBookAppointment = async(doctor, date, time,problem) => {
       try{
-        const res=await axios.post("http://localhost:5500/bookappointment",{doctor:doctor.email,date:date,time:time},{withCredentials:true});
+        const res=await axios.post("http://localhost:5500/bookappointment",{doctor:doctor.email,date:date,time:time,problem:problem},{withCredentials:true});
         if(res.data.message==="Appointment booked successfully"){
           // alert("Appointment booked successfully");
           const newAppointment = {
@@ -840,6 +846,7 @@ const handleChange = (e) => {
                 </div>
               </div>
             </div>
+            <input type="text" placeholder='Mention your problem' className="form-control" name="problem" onChange={handleProblemChange}/>
             <div className="availability">
               <h5 className="text-label">Available Dates</h5>
 
@@ -853,7 +860,7 @@ const handleChange = (e) => {
                         `Book appointment with ${doctor.email} on ${new Date(date).toDateString()} at 10:00 AM?`
                       );
                       if (confirmed) {
-                        handleBookAppointment(doctor, date, '10:00 AM');
+                        handleBookAppointment(doctor, date, '10:00 AM',problem);
                       }
                     }}
                   >
