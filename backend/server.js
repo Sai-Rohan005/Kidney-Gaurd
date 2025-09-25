@@ -11,6 +11,7 @@ const multer =require("multer");
 const cloudinary = require("cloudinary").v2;
 const patient_details=require("./mongo/patient_details");
 const doctor_details=require("./mongo/doctor_details");
+const FormData = require('form-data');
 
 const createAuth = require('./auth');
 //start redis - brew services start redis
@@ -22,6 +23,8 @@ const { login, getSession, logout } = createAuth(redisClient);
 
 const doctor = { "sairohan005@gmail.com": "Doctor", };
 const doctorinfo={"sairohan005@gmail.com":{"specialization":"Nephrologist",qualification:"MBBS, MD",clinic_address:"123, Main Street, City",clinic_timings:"10 AM - 4 PM",experienceYears:4,rating:4} ,}
+const stage={0:"No Disease",1:"Stage_1",2:"Stage_2",3:"Stage_3",4:"Stage_4"};
+
 
 const upload = multer({ storage: multer.memoryStorage() }); // store files in memory
 
@@ -59,13 +62,13 @@ app.use(express.json());
 
 app.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email,dob, phone, password } = req.body;
     const role = doctor[email] || "Patient";
     // const exuser=userSchema.findOne({email:email});
     // if(exuser){
     //   return res.json({ message: "User already exists" ,status:400});
     // }
-    const newUser = new userSchema({ name, role, email, phone, password });
+    const newUser = new userSchema({ name, role, email,dob, phone, password });
     await newUser.save();
     if(role=='Doctor'){
       const newdoctor=new doctor_details({email});
@@ -402,6 +405,54 @@ app.post('/updatedoctorappointmentstatus',async(req,res)=>{
   }
 })
 
+app.get('/getallreports',async(req,res)=>{
+  try{
+    const sessionData = await getSession(req.session.user.sessionToken);
+    let ddetails = await doctor_details.findOne({ email: sessionData.username });
+    if(!ddetails){
+      return res.json({message:"Doctor details not found",status:404});
+    }let reports=[];
+    let patients=new Set();
+    ddetails.appointments.map(async(d)=>{
+      if(d.status==="Completed"){
+        let pdetails = await patient_details.findOne({ email: d.patientEmail });
+        if(pdetails){
+          reports.push({patientEmail:d.patientEmail,reports:pdetails.reports});
+          let ptnt=await userSchema.findOne({email:d.patientEmail});
+          if(ptnt){
+            patients.add(ptnt);
+          }
+        }
+      }
+    })
+    return res.json({patient:patients,reports:reports,message:"Reports found",status:200});
+  }catch(err){
+    console.log(err);
+    return res.json({ message: "Server error" ,status:500});
+  }
+})
+
+
+app.post('/getpatientmaindocument',async(req,res)=>{
+  // console.log(req.body);
+  try{
+    // const sessionData = await getSession(req.session.user.sessionToken);
+    let pdetails = await patient_details.findOne({ email: req.body.patientEmail });
+    if(!pdetails){
+      return res.json({message:"Patient details not found",status:404});
+    }
+    if(pdetails.ultrasound_data.length===0){
+      return res.json({message:"No uploads found",status:404});
+    }
+    return res.json({main:pdetails,message:"Main document found",status:200});
+  }catch(err){
+    console.log(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+})
+
+
+
 
 
 
@@ -519,28 +570,69 @@ app.post('/changePassword', async (req, res) => {
 );
 
 
-app.post("/api/predict", async (req, res) => {
+app.post("/predictckd", async (req, res) => {
     // console.log("Received request:", req.body);
+    const {pmail}=req.body;
     try {
-      const response = await axios.post("http://localhost:8001/routes/tab_predict", req.body);
-      console.log("Response from FastAPI:", response.data);
-      res.json(response.data);
+      const pdetails=await patient_details.findOne({email:pmail});
+      if(pdetails){
+        const response = await axios.post("http://localhost:8001/routes/tab_predict",pdetails.clinical_data);
+        console.log("Response from FastAPI:", response.data);
+        try{
+          const arr=[];
+          pdetails.ultrasound_data.map(async(img_url)=>{
+            const unetpred=await axios.post("http://localhost:8001/routes/unet_predict",{url:img_url});
+            if(arr.length!=0){
+              arr = arr.map((num, i) => (num + unetpred[i]) / 2);
+            }else{
+              arr=unetpred;
+            }
+          })
+          response.map((i)=>{i=i*0.6});
+          arr.map((i)=>{i=i*0.4});
+          const results=arr.map((num, i) => (num + response[i]));
+          const maxIndex = results.indexOf(Math.max(...results));
+          res.json({prediction:stage[maxIndex]});
+
+        }catch(err){
+          console.log(err);
+          res.status(500).json({ error: "ML prediction failed" });
+
+        }
+      }
     } catch (error) {
       console.error("Error calling FastAPI:", error.message);
       res.status(500).json({ error: "ML prediction failed" });
     }
   });
 
-app.post("/tabFile",async(req,res)=>{
-    // let path={"image_path":"../uploads/image5.png"}
-    const resultone=await axios.post("http://localhost:8001/routes/extract_text/extract_text",{
-      image_path: "/Users/rohittanuku/rohan'sproject/chronicdiseaseprediction/backend/uploads/image5.png"
+  app.post("/tabFile", upload.array("files"), async (req, res) => {
+    try {
+      const results = [];
+  
+      for (const file of req.files) {
+        const formData = new FormData();
+        // Correct way to append a Buffer
+        formData.append("file", file.buffer, { filename: file.originalname });
+  
+        const response = await axios.post(
+          "http://localhost:8001/routes/extract_text",
+          formData,
+          {
+            headers: formData.getHeaders(), // form-data headers
+          }
+        );
+  
+        results.push({ filename: file.originalname, ocr_result: response.data });
+      }
+  
+      res.json({ success: true, results });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to extract text" });
+    }
   });
-    console.log("Received extracted:", resultone);
-    const response = await axios.post("http://localhost:8001/routes/tab_predict/tab_predict", resultone);
-    console.log("Response from FastAPI:", response.data);
-    res.json(response.data);
-})
+  
   
 
 app.listen(5500,()=>{

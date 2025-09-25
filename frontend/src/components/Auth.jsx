@@ -100,6 +100,7 @@ const Auth = () => {
           email: formData.email,
           phone: formData.phone,
           password: formData.password,
+          dob: formData.dob,
         };
 
         try{
@@ -305,6 +306,21 @@ const Auth = () => {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   placeholder="Confirm your password"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+            {isSignup && (
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Date of Birth</label>
+                <input
+                  type="date"
+                  id="dob"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleInputChange}
+                  // placeholder="Confirm your password"
                   required
                   disabled={isLoading}
                 />

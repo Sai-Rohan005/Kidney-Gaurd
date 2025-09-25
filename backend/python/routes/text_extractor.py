@@ -3,7 +3,7 @@ import cv2, numpy as np
 from PIL import Image
 from paddleocr import PaddleOCR
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -253,31 +253,26 @@ class ImagePath(BaseModel):
     image_path: str
 
 @router.post("/extract_text")
-def extract_text(request: ImagePath):
-    img_path = request.image_path
-    results = ocr.predict(img_path)  # PaddleOCR results
+async def extract_text(file: UploadFile = File(...)):
+    # Read the file into memory
+    file_bytes = await file.read()
 
+    # If it's an image, you can use PIL or OpenCV
+    from PIL import Image
+    import io
+    image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+
+    # Run OCR
+    results = ocr.ocr(np.array(image))
+
+    # Parse OCR results as before
     ocr_lines = []
     for page in results:
-        texts = page['rec_texts']
-        scores = page['rec_scores']
-        boxes  = page['rec_boxes']
-
-        for text, score, box in zip(texts, scores, boxes):
-            # Convert box (NumPy array) to list for JSON serialization
+        for line in page:
             ocr_lines.append({
-                "text": text,
-                "confidence": score,
-                "box": box.tolist() if isinstance(box, np.ndarray) else box
+                "text": line[1][0],           # recognized text
+                "confidence": line[1][1],     # confidence score
+                "box": line[0]                 # bounding box
             })
 
-    structured = {}
-    for i, line in enumerate(ocr_lines[:-1]):
-        canonical = normalize_field(line, field_aliases)
-        if canonical:
-            next_line = ocr_lines[i + 1]
-            value = next_line.get("text", "") if isinstance(next_line, dict) else str(next_line)
-            structured[canonical] = value
-
-    return {"ocr_lines": ocr_lines, "structured": structured}
-
+    return {"ocr_lines": ocr_lines}

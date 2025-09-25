@@ -10,7 +10,7 @@ const Layout = () => {
   const [dashboard, setDashboard] = useState('doctor-dashboard'); // role-level dashboard
   const [activeSection, setActiveSection] = useState('dashboard'); // tab/section inside dashboard
   const [userRole, setUserRole] = useState('Patient');
-  const [isMobile,setIsMobile]=useState(window.innerWidth <= 768);
+  const [isMobile,setIsMobile]=useState(window.innerWidth <= 450);
   useEffect(()=>{
     setIsMobile(window.innerWidth <= 768);
   },[])
@@ -52,7 +52,11 @@ const Layout = () => {
     return <div>Select a section</div>;
   };
 
-  return (
+  return isMobile ? (
+    <>
+      <main className="content">{renderContent()}</main>
+    </>
+  ) : (
     <div className={`layout ${(isSidebarOpen && !isMobile) ? 'sidebar-open' : 'sidebar-collapsed'}`}>
       <Header onToggleSidebar={toggleSidebar} />
       <div className="main-wrapper">
@@ -65,9 +69,6 @@ const Layout = () => {
         <main className="content">{renderContent()}</main>
       </div>
     </div>
-
-
-
   );
 };
 

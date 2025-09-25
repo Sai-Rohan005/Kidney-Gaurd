@@ -11,6 +11,7 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
   const [alldoctors,setalldoctors]=useState("null");
   const [uploadtab,setuploadtab]=useState("clinical");
   const [formfile,setformfile]=useState(null);
+  const [text_file,settext_file]=useState(null);
   const [clinicalformdata,setclinicalformdata]=useState({
         "Age of the patient":"",
         "Blood pressure (mm/Hg)":"",
@@ -214,6 +215,7 @@ const handlechangefile=(e)=>{
     setformfile(e.target.files);
 }
 
+
 const handlefile=async()=>{
   try{
       let respon=await axios.post("http://localhost:5500/clinical_data",formfile);
@@ -291,6 +293,32 @@ const handleChange = (e) => {
     const fileInput = document.getElementById('file-upload')
     if (fileInput) fileInput.value = ''
   }
+
+  const handlechangetextfile=(e)=>{
+    const files = Array.from(e.target.files)
+    setSelectedFiles(files)
+    settext_file(files);
+}
+
+  const handletextexract = async () => {
+    if (!text_file || text_file.length === 0) {
+      alert("No file selected");
+      return;
+    }
+
+    const formData = new FormData();
+    text_file.forEach((file) => formData.append("files", file));
+
+    try {
+      const response = await axios.post("http://localhost:5500/tabFile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log(response.data); // contains extracted text
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   const handleBookAppointment = async(doctor, date, time,problem) => {
       try{
@@ -583,73 +611,73 @@ const handleChange = (e) => {
             <div className={`tab-card card shadow-sm ${fupload === 0 ? "left-tab" : "right-tab"}`}>
                 <div className="card-body">
                     {fupload === 0 ? (
-                         <div className="upload-area card">
-                         <div className="file-upload-zone">
-                           <div className="upload-icon">
-                             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                               <polyline points="14,2 14,8 20,8"></polyline>
-                               <line x1="12" y1="18" x2="12" y2="12"></line>
-                               <line x1="9" y1="15" x2="15" y2="15"></line>
-                             </svg>
-                           </div>
-                           <h4 className="text-heading-3">Drag and drop files here</h4>
-                           <p className="text-body">or</p>
-                           <label htmlFor="file-upload" className="upload-btn">
-                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                               <polyline points="7,10 12,15 17,10"></polyline>
-                               <line x1="12" y1="15" x2="12" y2="3"></line>
-                             </svg>
-                             Choose Files
-                           </label>
-                           <input
-                             id="file-upload"
-                             type="file"
-                             multiple
-                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                             onChange={handlechangefile}
-                             style={{ display: 'none' }}
-                           />
-                           <p className="upload-hint text-caption">Supports PDF, JPG, PNG, DOC files up to 10MB each</p>
-                         </div>
-                 
-                         {selectedFiles.length > 0 && (
-                           <div className="selected-files card">
-                             <h4 className="text-heading-3">Selected Files</h4>
-                             <div className="files-list">
-                               {selectedFiles.map((file, index) => (
-                                 <div key={index} className="file-item">
-                                   <div className="file-icon">
-                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                       <polyline points="14,2 14,8 20,8"></polyline>
-                                     </svg>
-                                   </div>
-                                   <div className="file-details">
-                                     <span className="file-name text-body">{file.name}</span>
-                                     <span className="file-size text-caption">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                   </div>
-                                   <button className="remove-file" onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}>
-                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                       <line x1="18" y1="6" x2="6" y2="18"></line>
-                                       <line x1="6" y1="6" x2="18" y2="18"></line>
-                                     </svg>
-                                   </button>
-                                 </div>
-                               ))}
-                             </div>
-                             <button onClick={handlefile} className="upload-submit-btn">
-                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                 <polyline points="17,8 12,3 7,8"></polyline>
-                                 <line x1="12" y1="3" x2="12" y2="15"></line>
-                               </svg>
-                               Upload {selectedFiles.length} Document{selectedFiles.length > 1 ? 's' : ''}
-                             </button>
-                           </div>
-                         )}
-                       </div>
+                        <div className="upload-area card">
+                        <div className="file-upload-zone">
+                          <div className="upload-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14,2 14,8 20,8"></polyline>
+                              <line x1="12" y1="18" x2="12" y2="12"></line>
+                              <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                          </div>
+                          <h4 className="text-heading-3">Drag and drop files here</h4>
+                          <p className="text-body">or</p>
+                          <label htmlFor="file-upload" className="upload-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7,10 12,15 17,10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Choose Files
+                          </label>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            onChange={handlechangetextfile}
+                            style={{ display: 'none' }}
+                          />
+                          <p className="upload-hint text-caption">Supports PDF, JPG, PNG, DOC files up to 10MB each</p>
+                        </div>
+                
+                        {selectedFiles.length > 0 && (
+                          <div className="selected-files card">
+                            <h4 className="text-heading-3">Selected Files</h4>
+                            <div className="files-list">
+                              {selectedFiles.map((file, index) => (
+                                <div key={index} className="file-item">
+                                  <div className="file-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                      <polyline points="14,2 14,8 20,8"></polyline>
+                                    </svg>
+                                  </div>
+                                  <div className="file-details">
+                                    <span className="file-name text-body">{file.name}</span>
+                                    <span className="file-size text-caption">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                  </div>
+                                  <button className="remove-file" onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <button onClick={handletextexract} className="upload-submit-btn">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17,8 12,3 7,8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                              </svg>
+                              Upload {selectedFiles.length} Document{selectedFiles.length > 1 ? 's' : ''}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                         <>
                             <h5 className="mb-3">Enter Your Details</h5>

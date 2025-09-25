@@ -18,12 +18,18 @@ const DoctorDashboard = ({ activeView }) => {
 
   const [activeTab, setActiveTab] = useState('pending')
   const [user, setUser] = useState(null)
-
+  const [clickedviewreport,setClickedviewreport]=useState(false);
   const [pendingDocuments, setPendingDocuments] = useState([])
   const [appointments, setAppointments] = useState([])
   const [completedReports, setCompletedReports] = useState([])
-
+  const [opened_report,setopened_report]=useState({});
   const [selectedDocument, setSelectedDocument] = useState(null)
+  const [allreports,setallreports]=useState([]);
+  // const [opened_report,setopened_report]=useState({});
+  const [patient,setpatient]=useState(null);
+  const [allpatient,setallpatient]=useState([]);
+  const [isclinical,setisclinical]=useState(false);
+  const [isresult,setisresult]=useState(false);
   const [reportForm, setReportForm] = useState({
     diagnosis: '',
     recommendations: '',
@@ -64,6 +70,7 @@ const DoctorDashboard = ({ activeView }) => {
         const pending = [];
         const completed = [];
         const all = [];
+        // console.log(allapp);
 
       allapp.forEach((i) => {
         if (i.status === "Pending") {
@@ -86,6 +93,23 @@ const DoctorDashboard = ({ activeView }) => {
     fetchapp();
   },[])
 
+  useEffect(()=>{
+    const getallreports=async()=>{
+      const repo=await axios.get("http://localhost:5500/getallreports",{
+        withCredentials:true
+      });
+      if(repo.data.reports){
+        setallreports(repo.data.reports);
+        setallpatient(repo.data.patient);
+      }else{
+        setallreports([]);
+        setallpatient([]);
+      }
+      // console.log(repo.data.reports);
+    }
+    getallreports();
+  },[])
+
   // Handlers
   const handleDocumentReview = async(document) => {
     try{
@@ -93,8 +117,8 @@ const DoctorDashboard = ({ activeView }) => {
        const updatestatus=await axios.post("http://localhost:5500/updatedoctorappointmentstatus",document,{
         withCredentials:true
        });
-       console.log(updatestatus.data);
-       setSelectedDocument(document);
+      //  console.log(updatestatus.data);
+      //  setSelectedDocument(document);
 
     }catch(err){
       console.log(err);
@@ -139,6 +163,31 @@ const DoctorDashboard = ({ activeView }) => {
     }))
   }
 
+  const handlemainitems=async(doc)=>{
+    try{
+      const getallmain=await axios.post("http://localhost:5500/getpatientmaindocument",doc,{
+        withCredentials:true
+      });
+      console.log(getallmain.data.main);
+      setSelectedDocument(getallmain.data.main);
+    }catch(err){
+      console.log(err);
+    }
+  }
+
+  const handlepredict=async()=>{
+    try{
+      const pred=await axios.post("http://localhost:5500/predictckd",opened_report,{
+        withCredentials:true
+      });
+      console.log(pred.data);
+
+    }catch(err){
+      console.log(err);
+    }
+  }
+  
+
   // ---- Tabs ----
   const renderPendingTab = () => (
     <div className="pending-section">
@@ -149,120 +198,120 @@ const DoctorDashboard = ({ activeView }) => {
       
 
       {selectedDocument ? (
-        <div className="document-review">
-          <div className="review-header">
-            <button 
-              className="back-btn"
-              onClick={() => setSelectedDocument(null)}
-            >
-              ← Back to List
-            </button>
-            <h4>Reviewing: {selectedDocument.documentName}</h4>
-            <p>Patient: {selectedDocument.patientName}</p>
-          </div>
+        <div className="image-viewer">
+          <span className='d-flex justify-content-between'>
+            <button className='btn btn-primary' onClick={()=>{setSelectedDocument(null)}}>back</button>
+            {isresult && (
+              <button className='btn btn-success '>View Result</button>
+            )}
+            <button className='btn btn-outline-primary'>Message</button>
 
-          <div className="document-viewer">
-            <div className="document-placeholder">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14,2 14,8 20,8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-              </svg>
-              <p>Document: {selectedDocument.documentName}</p>
-              <p>Type: {selectedDocument.documentType}</p>
-              <p>Uploaded: {selectedDocument.uploadDate}</p>
-            </div>
-          </div>
+          </span>
+          <div className="card">
+            <aside className="Thumbnails-sidebar" aria-label="Thumbnails sidebar">
+              <div className="Thumbnails-sidebar-header">Images</div>
+              <div id="thumbs" className="thumbs" role="list">
+                {selectedDocument.ultrasound_data && selectedDocument.ultrasound_data.length > 0 ? (
+                  selectedDocument.ultrasound_data.map((imgSrc, index) => (
+                    <>
+                    <div key={index} className="thumb" role="listitem">
+                      <img
+                        src={imgSrc}
+                        alt={`Thumbnail ${index + 1}`}
+                        style={{
+                          height: "var(--thumb-size)",
+                          borderRadius: "8px",
+                          objectFit: "cover",
+                        }}
+                        onClick={() => {
+                          setisclinical(false);
+                          document.getElementById("mainImage").src = imgSrc;
+                          document.getElementById("mainImage").hidden = false;
+                          document.getElementById("viewerTitle").textContent = `Image ${index + 1} of ${selectedDocument.ultrasound_data.length}`;
+                          document.getElementById("viewerMeta").textContent = selectedDocument.patientEmail;
+                          document.getElementById("viewerFooter").textContent = selectedDocument.description || "No description available";
+                        }}
+                      />
+                    </div>
+                      </>
+                  ))
+                ) : (
+                  <p style={{ padding: "10px", color: "var(--muted)" }}>No images available</p>
+                )}
 
-          <div className="report-form">
-            <h5>Medical Report</h5>
-            
-            <div className="form-group">
-              <label htmlFor="diagnosis">Diagnosis *</label>
-              <textarea
-                id="diagnosis"
-                name="diagnosis"
-                value={reportForm.diagnosis}
-                onChange={handleInputChange}
-                placeholder="Enter your diagnosis based on the document review..."
-                rows="3"
-                required
-              />
-            </div>
+                <button className="btn btn-primary" onClick={()=>{setisclinical(true)}}>Clinical Data</button>
+              
+                <button className="fixed-btn bg-success text-white" title="Action" onClick={handlepredict}>Results</button>
 
-            <div className="form-group">
-              <label htmlFor="recommendations">Recommendations *</label>
-              <textarea
-                id="recommendations"
-                name="recommendations"
-                value={reportForm.recommendations}
-                onChange={handleInputChange}
-                placeholder="Provide treatment recommendations and lifestyle advice..."
-                rows="4"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="medications">Medications</label>
-              <textarea
-                id="medications"
-                name="medications"
-                value={reportForm.medications}
-                onChange={handleInputChange}
-                placeholder="List prescribed medications and dosages..."
-                rows="3"
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="followUpDate">Follow-up Date</label>
-                <input
-                  type="date"
-                  id="followUpDate"
-                  name="followUpDate"
-                  value={reportForm.followUpDate}
-                  onChange={handleInputChange}
-                />
               </div>
-            </div>
+            </aside>
+            <main className="viewer"  aria-live="polite">
+              {isclinical ?(
+                <>
+              <div className="viewer-header">
+                <div className="viewer-title" id="viewerTitle">
+                  Clinical Data
+                </div>
+                <div
+                  className="viewer-meta"
+                  id="viewerMeta"
+                  style={{ color: "var(--muted)", fontSize: "12px" }}
+                >
+                  {selectedDocument.patientEmail}
+                </div>
+              </div>
+              <div className="viewer-main" style={{ padding: "20px", overflowY: "auto" }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(selectedDocument.clinical_data || {}).map(([key, value]) => (
+                      <tr key={key}>
+                        <td>{key}</td>
+                        <td>{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
 
-            <div className="form-group">
-              <label htmlFor="notes">Additional Notes</label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={reportForm.notes}
-                onChange={handleInputChange}
-                placeholder="Any additional observations or notes..."
-                rows="2"
-              />
-            </div>
-
-            <div className="form-actions">
-              <button 
-                type="button" 
-                className="cancel-btn"
-                onClick={() => setSelectedDocument(null)}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="submit-btn"
-                onClick={handleReportSubmit}
-              >
-                Submit Report
-              </button>
-            </div>
+                </table>
+              </div>
+              <div className="viewer-footer" id="viewerFooter">
+                {selectedDocument.description || "No description available"}
+              </div>
+                </>
+              ):(
+                <>
+              <div className="viewer-header">
+                <div className="viewer-title" id="viewerTitle">
+                  Select an image
+                </div>
+                <div
+                  className="viewer-meta"
+                  id="viewerMeta"
+                  style={{ color: "var(--muted)", fontSize: "12px" }}
+                >
+                  —
+                </div>
+              </div>
+              <div className="viewer-main">
+                <img id="mainImage" alt="Selected preview" src="" hidden />
+              </div>
+              <div className="viewer-footer" id="viewerFooter">
+                No image selected
+              </div>
+              </>
+              )}
+            </main>
           </div>
         </div>
       ) : (
         <div className="documents-grid">
           {pendingDocuments.map(doc => (
-            <div className="document-card card card-hover">
+            <div key={`${doc.patientEmail}-${doc.date}-${doc.time}`} className="document-card card card-hover">
               <div className="document-header">
                 <div className="document-icon">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -287,7 +336,7 @@ const DoctorDashboard = ({ activeView }) => {
               </div>
               <button 
                 className="review-btn"
-                onClick={() => handleDocumentReview(doc)}
+                onClick={() => handlemainitems(doc)}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -322,7 +371,7 @@ const DoctorDashboard = ({ activeView }) => {
 
       <div className="appointments-list">
         {appointments.map(apt => (
-          <div className="appointment-card card card-hover">
+          <div key={`${apt.patientEmail}-${apt.date}-${apt.time}`} className="appointment-card card card-hover">
             <div className="appointment-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -368,8 +417,284 @@ const DoctorDashboard = ({ activeView }) => {
 
   const renderReportsTab = () => (
     <div className="reports-section">
-      Reports UI
-      {/* ... keep your existing reports JSX ... */}
+      <div className="section-header">
+        <h3 className="text-heading-2">Completed Reports</h3>
+        <p className="text-body-large">Access and review all medical reports you have completed for your patients</p>
+      </div>
+      {clickedviewreport===true ? (
+        <div key={`${report.patientEmail}-${report.date || report.id}`}  className="ckd-report">
+          <div className="wrap">
+          <div className="card" style={{ position: "relative" }}>
+            <button className="close-btn" aria-label="Close" onClick={()=>setClickedviewreport(false)}>
+              ×
+            </button>
+    
+            <h1 className="title">Chronic Kidney Disease (CKD) Report</h1>
+            <p className="subtitle">
+              Confidential medical document • Generated:{" "}
+              <span>{opened_report.date}</span>
+            </p>
+    
+            <div className="grid mb">
+              <div className="section">
+                <h3>Patient Information</h3>
+                <div className="row">
+                  <div className="label">Name</div>
+                  <div className="value">{patient.name}</div>
+                </div>
+                <div className="row">
+                  <div className="label">Age / Sex</div>
+                  <div className="value">24</div>
+                </div>
+                <div className="row">
+                  <div className="label">Patient ID</div>
+                  <div className="value">{patient._id}</div>
+                </div>
+                <div className="row">
+                  <div className="label">Date of Birth</div>
+                  <div className="value">{patient.dob}</div>
+                </div>
+                {/* <div className="row">
+                  <div className="label">Physician</div>
+                  <div className="value"></div>
+                </div> */}
+              </div>
+    
+              <div className="section">
+                <h3>Summary</h3>
+                <div className="row">
+                  <div className="label">CKD Stage (Target_Label)</div>
+                  <div className="value">
+                    <span>{opened_report.stage}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Serum creatinine (mg/dl)</div>
+                  <div className="value">
+                    <span>{opened_report['Serum creatinine (mg/dl)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Blood urea (mg/dl)</div>
+                  <div className="value">
+                    <span>{opened_report['Blood urea (mg/dl)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Hemoglobin level (gms)</div>
+                  <div className="value">
+                    <span>{opened_report['Hemoglobin level (gms)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Blood pressure (mm/Hg)</div>
+                  <div className="value">
+                    <span>{opened_report['Blood pressure (mm/Hg)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Albumin in urine</div>
+                  <div className="value">
+                    <span>{opened_report['Albumin in urine']}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+    
+            <div className="section mb">
+              <h3>Laboratory Results</h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Test</th>
+                    <th>Result</th>
+                    <th>Reference Range</th>
+                    <th>Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Serum creatinine (mg/dl)</td>
+                    <td>{opened_report['Serum creatinine (mg/dl)']}</td>
+                    <td>0.6 – 1.3 mg/dl</td>
+                    <td>
+                      <span className="badge warn">Abnormal</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Blood urea (mg/dl)</td>
+                    <td>{opened_report['Blood urea (mg/dl)']}</td>
+                    <td>10 – 40 mg/dl</td>
+                    <td>
+                      <span className="badge warn">Abnormal</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Hemoglobin level (gms)</td>
+                    <td>{opened_report['Hemoglobin level (gms)']}</td>
+                    <td>12 – 16 g/dl (typical adult)</td>
+                    <td>
+                      <span className="badge ok">Normal</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Blood pressure (mm/Hg)</td>
+                    <td>{opened_report['Blood pressure (mm/Hg)']}</td>
+                    <td>90 – 130 mm/Hg</td>
+                    <td>
+                      <span className="badge warn">Abnormal</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Albumin in urine</td>
+                    <td>{opened_report['Albumin in urine']}</td>
+                    <td>0 (negative)</td>
+                    <td>
+                      <span className="badge warn">Abnormal</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+    
+            <div className="section mb">
+              <h3>Stage-specific Reference Ranges</h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>No_Disease</th>
+                    <th>Stage_1</th>
+                    <th>Stage_2</th>
+                    <th>Stage_3</th>
+                    <th>Stage_4</th>
+                    <th>Stage_5</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Serum creatinine (mg/dl)</td>
+                    <td>0.6 – 1.3</td>
+                    <td>1.3 – 1.5</td>
+                    <td>1.5 – 2.0</td>
+                    <td>2.0 – 3.5</td>
+                    <td>3.5 – 5.0</td>
+                    <td>5.0 – 12.0</td>
+                  </tr>
+                  <tr>
+                    <td>Blood urea (mg/dl)</td>
+                    <td>10 – 40</td>
+                    <td>30 – 60</td>
+                    <td>50 – 80</td>
+                    <td>80 – 120</td>
+                    <td>120 – 150</td>
+                    <td>150 – 300</td>
+                  </tr>
+                  <tr>
+                    <td>Hemoglobin level (gms)</td>
+                    <td>12 – 16</td>
+                    <td>12 – 14</td>
+                    <td>11 – 13</td>
+                    <td>9 – 11</td>
+                    <td>8 – 10</td>
+                    <td>6 – 9</td>
+                  </tr>
+                  <tr>
+                    <td>Blood pressure (mm/Hg)</td>
+                    <td>90 – 130</td>
+                    <td>130 – 140</td>
+                    <td>135 – 150</td>
+                    <td>145 – 160</td>
+                    <td>155 – 170</td>
+                    <td>170 – 200</td>
+                  </tr>
+                  <tr>
+                    <td>Albumin in urine</td>
+                    <td>0</td>
+                    <td>1 – 2</td>
+                    <td>2 – 3</td>
+                    <td>3 – 4</td>
+                    <td>4 – 5</td>
+                    <td>5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+    
+            <div className="section">
+              <h3>Doctor&apos;s Notes & Recommendations</h3>
+              <ul>
+                <li>Monitor renal function and blood pressure; lifestyle optimization.</li>
+                <li>Repeat labs as clinically indicated.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ):(
+
+      <div className="reports-grid">
+        {completedReports.map(report => (
+          <div key={patient._id} className="report-card card card-hover">
+            <div className="report-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div className="report-content">
+              <div className="report-header">
+                <h5 className="text-body">{report.reportTitle}</h5>
+              </div>
+              <div className="report-details">
+                <div className="detail-item">
+                  <span className="text-label">Patient:</span>
+                  <span className="text-body">{report.patientEmail}</span><br />
+                <span className="completion-date text-caption">Appointed on: {new Date(report.date).toLocaleDateString()}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="text-label">Mentioned Problem:</span>
+                  <span className="text-body">{report.problem}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="text-label">Diagnosis:</span>
+                  <span className="text-body">{report.diagnosis}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="text-label">Recommendations:</span>
+                  <span className="text-body">{report.recommendations}</span>
+                </div>
+              </div>
+              <button className="view-full-report-btn" onClick={()=>{setClickedviewreport(true);
+              const rep=allpatient.find(r=>r.email===report.mail);
+              setopened_report(report);
+              setpatient(rep);
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View Full Report
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {completedReports.length === 0 && (
+          <div className="no-reports">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+            </svg>
+            <h4>No Completed Reports</h4>
+            <p>Reports you complete will appear here</p>
+          </div>
+        )}
+      </div>
+      )}
     </div>
   )
 
