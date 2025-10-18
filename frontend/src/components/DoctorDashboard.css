@@ -788,7 +788,7 @@
 /* Small Devices (mobile) */
 @media (max-width: 768px) {
   .doctor-dashboard {
-    padding: 16px;
+    padding: 8px;
   }
 
   .dashboard-tabs {
@@ -1130,6 +1130,7 @@
   outline: none;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35), 0 8px 20px rgba(37, 99, 235, 0.35);
 }
+
 
 .image-viewer .thumbs {
   display: flex;

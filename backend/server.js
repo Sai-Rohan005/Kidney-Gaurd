@@ -60,6 +60,24 @@ app.use(
 app.use(express.json());
 
 
+function calculateAge(dob) {
+  const birthDate = new Date(dob); // e.g. '2000-05-15'
+  const today = new Date();
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  // If birthday hasn't occurred yet this year, subtract one
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age--;
+  }
+
+  return age;
+}
+
+
+
 app.post('/register', async (req, res) => {
   try {
     const { name, email,dob, phone, password } = req.body;
@@ -405,32 +423,60 @@ app.post('/updatedoctorappointmentstatus',async(req,res)=>{
   }
 })
 
-app.get('/getallreports',async(req,res)=>{
-  try{
+app.get('/getallreports', async (req, res) => {
+  try {
     const sessionData = await getSession(req.session.user.sessionToken);
-    let ddetails = await doctor_details.findOne({ email: sessionData.username });
-    if(!ddetails){
-      return res.json({message:"Doctor details not found",status:404});
-    }let reports=[];
-    let patients=new Set();
-    ddetails.appointments.map(async(d)=>{
-      if(d.status==="Completed"){
-        let pdetails = await patient_details.findOne({ email: d.patientEmail });
-        if(pdetails){
-          reports.push({patientEmail:d.patientEmail,reports:pdetails.reports});
-          let ptnt=await userSchema.findOne({email:d.patientEmail});
-          if(ptnt){
-            patients.add(ptnt);
-          }
-        }
+    const ddetails = await doctor_details.findOne({ email: sessionData.username });
+
+    if (!ddetails) {
+      return res.json({ message: "Doctor details not found", status: 404 });
+    }
+
+    let reports = [];
+    let patients = [];
+
+    // Filter completed appointments and run async logic in parallel
+    const completedAppointments = ddetails.appointments.filter(app => app.status === "completed");
+
+    const results = await Promise.all(completedAppointments.map(async (appointment) => {
+      const pdetails = await patient_details.findOne({ email: appointment.patientEmail });
+      if (!pdetails || !Array.isArray(pdetails.reports) || pdetails.reports.length === 0) {
+        return null; // skip if no reports
       }
-    })
-    return res.json({patient:patients,reports:reports,message:"Reports found",status:200});
-  }catch(err){
-    console.log(err);
-    return res.json({ message: "Server error" ,status:500});
+
+      const lastReport = pdetails.reports.at(-1); // latest report
+
+      const ptnt = await userSchema.findOne({ email: appointment.patientEmail });
+      if (!ptnt) {
+        return null; // skip if user details not found
+      }
+
+      return {
+        patient: ptnt,
+        report: {
+          ...lastReport,         
+          patientEmail: appointment.patientEmail  
+        }
+      };
+
+    }));
+
+    // Filter out nulls and organize the data
+    results.forEach(result => {
+      if (result) {
+        patients.push(result.patient);
+        reports.push(result.report);
+      }
+    });
+
+    return res.json({ patient: patients, reports: reports, message: "Reports found", status: 200 });
+
+  } catch (err) {
+    console.error(err);
+    return res.json({ message: "Server error", status: 500 });
   }
-})
+});
+
 
 
 app.post('/getpatientmaindocument',async(req,res)=>{
@@ -571,40 +617,88 @@ app.post('/changePassword', async (req, res) => {
 
 
 app.post("/predictckd", async (req, res) => {
-    // console.log("Received request:", req.body);
-    const {pmail}=req.body;
-    try {
-      const pdetails=await patient_details.findOne({email:pmail});
-      if(pdetails){
-        const response = await axios.post("http://localhost:8001/routes/tab_predict",pdetails.clinical_data);
-        console.log("Response from FastAPI:", response.data);
-        try{
-          const arr=[];
-          pdetails.ultrasound_data.map(async(img_url)=>{
-            const unetpred=await axios.post("http://localhost:8001/routes/unet_predict",{url:img_url});
-            if(arr.length!=0){
-              arr = arr.map((num, i) => (num + unetpred[i]) / 2);
-            }else{
-              arr=unetpred;
-            }
-          })
-          response.map((i)=>{i=i*0.6});
-          arr.map((i)=>{i=i*0.4});
-          const results=arr.map((num, i) => (num + response[i]));
-          const maxIndex = results.indexOf(Math.max(...results));
-          res.json({prediction:stage[maxIndex]});
+  console.log("called predict");
+  // console.log(req.body)
+  const pdetails  = req.body;
+  try {
+    // console.log(pdetails)
+    // ---- Tabular data prediction ----
+    const tabResponse = await fetch("http://localhost:8001/routes/tab_predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ root: pdetails.pmail.clinical_data })
+      // add timeout handling in production
+    });
+    const tabData = await tabResponse.json();
+    console.log(tabData.probabilities)
+    if (tabData.error) throw new Error(tabData.error);
+    const tabArr = tabData.probabilities; // e.g. [0.2, 0.8]
 
-        }catch(err){
-          console.log(err);
-          res.status(500).json({ error: "ML prediction failed" });
+    // ---- UNet predictions for multiple images (limit concurrency) ----
+    const limit = 4; // adjust concurrency
+    const urls = pdetails.pmail.ultrasound_data || [];
+    const unetPromises = urls.map(url =>
+      fetch("http://localhost:8001/routes/unet_predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }).then(r => r.json())
+    );
 
-        }
-      }
-    } catch (error) {
-      console.error("Error calling FastAPI:", error.message);
-      res.status(500).json({ error: "ML prediction failed" });
+    const unetResponses = await Promise.all(unetPromises);
+    // validate
+    console.log(unetResponses)
+    unetResponses.forEach(r => {
+      if (!Array.isArray(r.probabilities)) throw new Error("invalid unet response");
+    });
+
+    // average element-wise
+    const n = unetResponses.length || 1;
+    const probsLen = unetResponses[0].probabilities.length;
+    let unetAvg = new Array(probsLen).fill(0);
+    for (const r of unetResponses) {
+      r.probabilities.forEach((p, i) => { unetAvg[i] += p; });
     }
-  });
+    unetAvg = unetAvg.map(v => v / n);
+
+    // ---- Combine tabular and UNet probabilities (weighted sum) ----
+    const wUnet = 0.6, wTab = 0.4;
+    if (tabArr.length !== unetAvg.length) {
+      throw new Error("mismatched probability vector lengths");
+    }
+    const results = unetAvg.map((p, i) => wUnet * p + wTab * tabArr[i]);
+
+    // map index -> label
+    const stage = ["notckd", "ckd"]; // ensure matches training labels
+    const maxIndex = results.indexOf(Math.max(...results));
+
+    const getalldetails=await userSchema.findOne({'email':pdetails.pmail.email});
+    const arrangereport={};
+    arrangereport["name"]=getalldetails.name
+    arrangereport["age"]=calculateAge(getalldetails.dob)
+    arrangereport["id"]=getalldetails._id
+    arrangereport["dob"]=getalldetails.dob
+    arrangereport["predict"]=stage[maxIndex]
+    arrangereport["Serum creatinine (mg/dl)"]=pdetails.pmail.clinical_data["Serum creatinine (mg/dl)"]
+    arrangereport["Blood urea (mg/dl)"]=pdetails.pmail.clinical_data["Blood urea (mg/dl)"]
+    arrangereport["Hemoglobin level (gms)"]=pdetails.pmail.clinical_data["Hemoglobin level (gms)"]
+    arrangereport["Blood pressure (mm/Hg)"]=pdetails.pmail.clinical_data["Blood pressure (mm/Hg)"]
+    arrangereport["Albumin in urine"]=pdetails.pmail.clinical_data["Albumin in urine"]
+
+    const updatereports=await patient_details.findOne({"email":pdetails.pmail.email});
+    updatereports.reports.push(arrangereport);
+    await updatereports.save();
+
+    res.json({ prediction: stage[maxIndex], probabilities: results[maxIndex] });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "ML prediction failed" });
+  }
+});
+
+
+
 
   app.post("/tabFile", upload.array("files"), async (req, res) => {
     try {

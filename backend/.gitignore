@@ -40,6 +40,7 @@ uploads/
 *.pth
 __pycache__/
 ckd_tabtransformer_artifacts_7
+tab_binary_8
 
 # macOS specific files
 *.sw?

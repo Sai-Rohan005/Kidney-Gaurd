@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 import uvicorn
 import pickle, json
@@ -10,41 +10,45 @@ import os
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from fastapi import APIRouter
+from torch import nn
+from copy import deepcopy
+from types import SimpleNamespace
+import torch.nn.functional as F
+
 
 router = APIRouter()
 
-# ==== Load Artifacts ====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-META_PATH = os.path.join(BASE_DIR, "ckd_tabtransformer_artifacts_7", "meta.json")
-Ordinal_path = os.path.join(BASE_DIR, "ckd_tabtransformer_artifacts_7", "ordinal_encoder.pkl")
-Label_path = os.path.join(BASE_DIR, "ckd_tabtransformer_artifacts_7", "label_encoder.pkl")
-Scaler_path = os.path.join(BASE_DIR, "ckd_tabtransformer_artifacts_7", "scaler.pkl")
-Model_path = os.path.join(BASE_DIR, "ckd_tabtransformer_artifacts_7", "tabtransformer.pt")
+ENCODERS_PATH = os.path.join(BASE_DIR, "tab_binary_8", "tabtransformer_encoders.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "tab_binary_8", "tabtransformer_ckd.pt")
 
-with open(META_PATH, "r") as f:
-    meta = json.load(f)
 
-# print ("✅ Meta loaded successfully",meta)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-categorical_cols = meta["categorical_cols"]
-numerical_cols = meta["numerical_cols"]
+# Load encoders and scaler
+with open(ENCODERS_PATH, "rb") as f:
+    saved_objects = pickle.load(f)
 
-with open(Ordinal_path, "rb") as f:
-    ordinal_encoder = pickle.load(f)
+y_le = saved_objects["label_encoder"]
+ord_enc = saved_objects["ordinal_encoder"]
+scaler = saved_objects["scaler"]
+categorical_cols = saved_objects["categorical_cols"]
+numerical_cols = saved_objects["numerical_cols"]
 
-with open(Label_path, "rb") as f:
-    label_encoder = pickle.load(f)
+# Load model architecture + weights
 
-with open(Scaler_path, "rb") as f:
-    scaler = pickle.load(f)
+cat_cardinalities = saved_objects.get("cat_cardinalities", None)  # fallback if needed
 
-num_classes = len(label_encoder.classes_)
-cat_cardinalities = [len(c) + 1 for c in ordinal_encoder.categories_]
+model_info = torch.load(MODEL_PATH, map_location=device)
 
-# ==== Define Model ====
+
+model = SimpleNamespace()  # placeholder
+# Build the same model architecture as used in training
+
+
 class TabTransformer(nn.Module):
     def __init__(self, cat_cardinalities, num_numeric,
-                 dim=64, depth=4, heads=8, dropout=0.2, num_classes=5):
+                 dim=64, depth=4, heads=8, dropout=0.2, num_classes=2):
         super().__init__()
         self.num_cats = len(cat_cardinalities)
         self.num_numeric = num_numeric
@@ -54,22 +58,19 @@ class TabTransformer(nn.Module):
             nn.Embedding(num_embeddings=card, embedding_dim=dim, padding_idx=0)
             for card in cat_cardinalities
         ])
-
         self.num_linear = nn.Sequential(
             nn.Linear(num_numeric, dim),
             nn.LayerNorm(dim),
             nn.ReLU(),
         )
-
         self.token_embeds = nn.Parameter(torch.randn(self.num_cats + 1, dim) * 0.02)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=dim, nhead=heads, dim_feedforward=dim*4,
+            d_model=dim, nhead=heads, dim_feedforward=dim * 4,
             dropout=dropout, batch_first=True, activation='gelu'
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=depth)
         self.norm = nn.LayerNorm(dim)
-
         self.head = nn.Sequential(
             nn.Linear(dim, 256),
             nn.ReLU(),
@@ -81,7 +82,6 @@ class TabTransformer(nn.Module):
     def forward(self, x_cats, x_nums):
         cat_embeds = [emb(x_cats[:, i]) for i, emb in enumerate(self.cat_embeddings)]
         cat_tokens = torch.stack(cat_embeds, dim=1)
-
         num_token = self.num_linear(x_nums).unsqueeze(1)
         tokens = torch.cat([cat_tokens, num_token], dim=1)
         tokens = tokens + self.token_embeds.unsqueeze(0)
@@ -91,80 +91,20 @@ class TabTransformer(nn.Module):
         z_mean = z.mean(dim=1)
         return self.head(z_mean)
 
-# ==== Load Model ====
-device = torch.device("cpu")
 model = TabTransformer(
-    cat_cardinalities=cat_cardinalities,
-    num_numeric=len(numerical_cols),
-    dim=64, depth=4, heads=8, dropout=0.2,
-    num_classes=num_classes
+    cat_cardinalities=model_info["cat_cardinalities"],
+    num_numeric=model_info["num_numeric"],
+    dim=model_info.get("dim",64),
+    depth=model_info.get("depth",4),
+    heads=model_info.get("heads",8),
+    dropout=model_info.get("dropout",0.2),
+    num_classes=model_info.get("num_classes",2)
 ).to(device)
 
-state_dict = torch.load(Model_path, map_location=device)
-model.load_state_dict(state_dict, strict=False)
+model.load_state_dict(model_info["model_state_dict"])
 model.eval()
-# print(model.feature_names_in_)
-
 
 print("✅ Model loaded successfully")
-
-# ==== Prediction Helper ====
-def predict_single(record, model, ordinal_encoder, scaler,
-                   categorical_cols, numerical_cols, label_encoder, device):
-    df = record
-
-    # encode categoricals
-    cat_vals = ordinal_encoder.transform(df[categorical_cols])
-    for i, c in enumerate(categorical_cols):
-        cat_vals[:, i] = np.where(
-            cat_vals[:, i] < 0,
-            len(ordinal_encoder.categories_[i]) - 1,
-            cat_vals[:, i]
-        )
-
-    # scale numericals
-    num_vals = scaler.transform(df[numerical_cols])
-
-    # tensors
-    cat_tensor = torch.tensor(cat_vals, dtype=torch.long, device=device)
-    num_tensor = torch.tensor(num_vals, dtype=torch.float32, device=device)
-
-    with torch.no_grad():
-        logits = model(cat_tensor, num_tensor)
-        probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
-        pred_idx = np.argmax(probs)
-        pred_label = label_encoder.inverse_transform([pred_idx])[0]
-
-    return pred_label, probs
-
-
-
-# Schema with your raw fields
-# class InputData(BaseModel):
-#     age: str | None = None
-#     bloodPressure: str
-#     specificGravity: str
-#     albumin: str
-#     sugar: str
-#     rbc: str
-#     pusCells: str
-#     pusClumps: str
-#     bacteria: str
-#     glucose: str
-#     urea: str
-#     creatinine: str
-#     sodium: str
-#     potassium: str
-#     hemoglobin: str
-#     pcv: str
-#     wbc: str
-#     rbcCount: str
-#     hypertension: str
-#     diabetes: str
-#     cad: str
-#     appetite: str
-#     edema: str
-#     anemia: str
 
 
 
@@ -172,37 +112,6 @@ class InputData(RootModel[dict]):
     pass# accept any JSON dict
 
 
-
-# # Define which features are numeric vs categorical (from training!)
-# NUMERIC_FEATURES = [
-#     "Age of the patient",
-#     "Blood pressure (mm/Hg)",
-#     "Specific gravity of urine",
-#     "Albumin in urine",
-#     "Sugar in urine",
-#     "Random blood glucose level (mg/dl)",
-#     "Blood urea (mg/dl)",
-#     "Serum creatinine (mg/dl)",
-#     "Sodium level (mEq/L)",
-#     "Potassium level (mEq/L)",
-#     "Hemoglobin level (gms)",
-#     "Packed cell volume (%)",
-#     "White blood cell count (cells/cumm)",
-#     "Red blood cell count (millions/cumm)"
-# ]
-
-# CATEGORICAL_FEATURES = [
-#     "Red blood cells in urine",
-#     "Pus cells in urine",
-#     "Pus cell clumps in urine",
-#     "Bacteria in urine",
-#     "Hypertension (yes/no)",
-#     "Diabetes mellitus (yes/no)",
-#     "Coronary artery disease (yes/no)",
-#     "Appetite (good/poor)",
-#     "Pedal edema (yes/no)",
-#     "Anemia (yes/no)"
-# ]
 
 def preprocess_input(data: dict, numerical_cols: list, categorical_cols: list):
     processed = {}
@@ -218,33 +127,49 @@ def preprocess_input(data: dict, numerical_cols: list, categorical_cols: list):
 
 
 @router.post("/tab_predict")
-async def predict(request: InputData):
+async def predict(request: Request):
     try:
-        data = request.root  # raw frontend dict
+        data = await request.json()
+        if not data:
+            return {"error": "No input data received"}
 
-        # ✅ Convert to cleaned dict with correct dtypes
+        # Preprocess input
         processed = preprocess_input(data, numerical_cols, categorical_cols)
-
-        # ✅ Create DataFrame in correct column order
-        df = pd.DataFrame([[processed[col] for col in numerical_cols + categorical_cols]],
-                          columns=numerical_cols + categorical_cols)
-
-        # ✅ Send to model
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        pred_class, probs = predict_single(
-            df, model, ordinal_encoder, scaler,
-            categorical_cols, numerical_cols,
-            label_encoder, device
+        df_single = pd.DataFrame(
+            [[processed[col] for col in numerical_cols + categorical_cols]],
+            columns=numerical_cols + categorical_cols
         )
 
-        return {"prediction": pred_class, "probabilities": probs.tolist()}
+        # Encode categorical columns
+        cats = ord_enc.transform(df_single[categorical_cols].astype(str)).astype(np.int64) + 1
+        cats_tensor = torch.tensor(cats, dtype=torch.long).to(device)
+
+        # Scale numeric columns
+        nums = scaler.transform(df_single[numerical_cols]).astype(np.float32)
+        nums_tensor = torch.tensor(nums, dtype=torch.float32).to(device)
+
+        # Predict
+        with torch.no_grad():
+            logits = model(cats_tensor, nums_tensor)
+            probs = F.softmax(logits, dim=1)
+
+            # Keep full precision, replace NaN/Inf if any
+            probs_np = probs.cpu().numpy().squeeze(0)
+            probs_clean = np.nan_to_num(probs_np, nan=0.0, posinf=1.0, neginf=0.0)
+            probs_list = probs_clean.tolist()  # full precision
+
+        pred_class_idx = logits.argmax(dim=1).item()
+        pred_class_label = y_le.inverse_transform([pred_class_idx])[0]
+
+        return {
+            "prediction": pred_class_label,
+            "probabilities": probs_list
+        }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
-
-
-
-
 
 
 
