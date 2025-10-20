@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect,useRef } from 'react'
 import './DoctorDashboard.css'
 import axios from 'axios'
+
+function formatTime(date) {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 
 const DoctorDashboard = ({ activeView }) => {
   const mapActiveViewToTab = (view) => {
@@ -33,9 +39,16 @@ const DoctorDashboard = ({ activeView }) => {
   const [probability, setProbability] = useState(0);
   const [loading, setLoading] = useState(false);
   const [display_single_report,setdisplay_single_report]=useState(null);
+  const [ismessage,setismessage]=useState(false);
 
   const [show_single_report,setshow_single_report]=useState(false)
   const [isresult,setisresult]=useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const statusDotColor = "#22c55e"; 
+  const title = "Chat";
+  const listRef = useRef(null);
+  // const listRef = user(null);
   const [reportForm, setReportForm] = useState({
 
     diagnosis: '',
@@ -44,6 +57,127 @@ const DoctorDashboard = ({ activeView }) => {
     followUpDate: '',
     notes: ''
   })
+
+  const styles = {
+  container: {
+    width: "100%",
+    maxWidth: 720,
+    height: "calc(100dvh - 48px)", // fill viewport minus outer padding
+    margin: "0 auto",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+    background: "#ffffff",
+  },
+  header: {
+    padding: "12px 16px",
+    borderBottom: "1px solid #f0f2f5",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  dot: (color) => ({
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: color,
+  }),
+  title: { fontWeight: 600, fontSize: 16 },
+  messages: {
+    flex: 1,
+    padding: 16,
+    overflowY: "auto",
+    background: "#fafafa",
+  },
+  row: {
+    display: "flex",
+    marginBottom: 10,
+    gap: 8,
+  },
+  bubble: (isUser) => ({
+    maxWidth: "85%",
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: isUser ? "#2563eb" : "#ffffff",
+    color: isUser ? "#ffffff" : "#111827",
+    border: isUser ? "none" : "1px solid #e5e7eb",
+    boxShadow: isUser ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
+    whiteSpace: "pre-wrap",
+  }),
+  meta: { fontSize: 11, color: "#6b7280", marginTop: 4 },
+  avatar: (bg = "#e5e7eb") => ({
+    minWidth: 32,
+    height: 32,
+    borderRadius: 999,
+    background: bg,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 600,
+  }),
+  inputBar: {
+    padding: 12,
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    borderTop: "1px solid #f0f2f5",
+    display: "flex",
+    gap: 8,
+    background: "#fff",
+  },
+  input: {
+    flex: 1,
+    border: "1px solid #e5e7eb",
+    borderRadius: 999,
+    padding: "12px 14px",
+    outline: "none",
+    fontSize: 14,
+  },
+  button: {
+    border: "none",
+    borderRadius: 999,
+    padding: "0 16px",
+    fontWeight: 600,
+    background: "#2563eb",
+    color: "#fff",
+    cursor: "pointer",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
+  },
+};
+
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    const userMsg = {
+      id: (crypto?.randomUUID?.() || Math.random().toString(36).slice(2)),
+      role: "user",
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    // Notify parent if provided, but do not render any assistant messages here.
+    if (onSend) {
+      try { onSend(trimmed); } catch {}
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   // Fetch user info
   useEffect(() => {
@@ -105,7 +239,6 @@ const DoctorDashboard = ({ activeView }) => {
       const repo=await axios.get("http://localhost:5500/getallreports",{
         withCredentials:true
       });
-      console.log(repo)
       if(repo.data.reports){
         setallreports(repo.data.reports);
         setallpatient(repo.data.patient);
@@ -205,28 +338,22 @@ const DoctorDashboard = ({ activeView }) => {
 };
 
 const setreports=(report)=>{
-  // console.log("Clicked report:", report);
   const matchedPatient = Array.isArray(allpatient)
   ? allpatient.find((r) => r.email === report.patientEmail)
   : null;
-  // console.log("Matched patient:", matchedPatient);
   const matchedreport = Array.isArray(allreports)
   ? allreports.find((r) => r.patientEmail === report.patientEmail)
   : null;
   setClickedviewreport(true);
   setopened_report(matchedreport);
   setpatient(matchedPatient);
-  console.log("All reports array:", allreports);
-  console.log("All patients array:", matchedreport);
 }
 
 
 const displayreults=(doc)=>{
-  console.log(doc)
   const matchedreport = Array.isArray(allreports)
   ? allreports.find((r) => r.patientEmail === doc.email)
   : null;
-  console.log("view report",matchedreport)
   setshow_single_report(true)
   setdisplay_single_report(matchedreport);
 
@@ -238,11 +365,93 @@ const displayreults=(doc)=>{
   // ---- Tabs ----
   const renderPendingTab = () => (
     <div className="pending-section">
+    {!ismessage  && !show_single_report &&
+
       <div className="section-header">
         <h3 className="text-heading-2">Pending Document Reviews</h3>
         <p className="text-body-large">Prioritize patient reviews and provide comprehensive medical reports</p>
       </div>
-      {show_single_report && 
+     }
+
+      {ismessage && <>
+        
+        <div style={styles.container}>
+      <div >
+          <div style={{ ...styles.header, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={styles.dot(statusDotColor)} />
+              <div style={styles.title}>{title}</div>
+            </div>
+            <button className="btn btn-outline-secondary" onClick={()=>{setismessage(false)}}>x</button>
+          </div>
+      </div>
+
+      <div ref={listRef} style={styles.messages}>
+        {messages.map((m) => {
+          const isUser = m.role === "user";
+          return (
+            <div
+              key={m.id}
+              style={{
+                ...styles.row,
+                justifyContent: isUser ? "flex-end" : "flex-start",
+              }}
+            >
+              {!isUser && <div style={styles.avatar("#e5f0ff")}>A</div>}
+              <div>
+                <div style={styles.bubble(isUser)}>{m.text}</div>
+                <div style={{ ...styles.meta, textAlign: isUser ? "right" : "left" }}>
+                  {isUser ? "You" : "Assistant"} • {formatTime(m.timestamp)}
+                </div>
+              </div>
+              {isUser && <div style={styles.avatar("#e5e7eb")}>Y</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={styles.inputBar}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a message..."
+          style={styles.input}
+        />
+        <button
+          onClick={handleSend}
+          style={{
+            ...styles.button,
+            ...(input.trim() ? {} : styles.buttonDisabled),
+          }}
+          disabled={!input.trim()}
+          aria-label="Send message"
+          title="Send"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+      
+      </>
+
+      }
+
+
+      {!ismessage && show_single_report && 
         <>
         <div key={`1`}  className="ckd-report">
           <div className="wrap">
@@ -369,7 +578,7 @@ const displayreults=(doc)=>{
                     <td>{display_single_report['Albumin in urine']}</td>
                     <td>0 (negative)</td>
                     <td>
-                      <span className={display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
+                      <span className={display_single_report['Albumin in urine'] <=0 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -459,14 +668,14 @@ const displayreults=(doc)=>{
 
       }
 
-      {!show_single_report && selectedDocument ? (
+      {!ismessage && !show_single_report && selectedDocument ? (
         <div className="image-viewer">
           <span className='d-flex justify-content-between'>
             <button className='btn btn-primary' onClick={()=>{setSelectedDocument(null)}}>back</button>
             {isresult && (
               <button className='btn btn-success ' onClick={()=>{displayreults(selectedDocument)}}>View Result</button>
             )}
-            <button className='btn btn-outline-primary'>Message</button>
+            <button className='btn btn-outline-primary' onClick={()=>{setismessage(true)}}>Message</button>
 
           </span>
           
@@ -615,7 +824,7 @@ const displayreults=(doc)=>{
                   </div>
                 ) : (
                   <div className="documents-grid">
-                  {!show_single_report && pendingDocuments.map(doc => (
+                  {!ismessage  && !show_single_report && pendingDocuments.map(doc => (
                     <div key={`${doc.patientEmail}-${doc.date}-${doc.time}`} className="document-card card card-hover">
               <div className="document-header">
                 <div className="document-icon">
@@ -819,42 +1028,42 @@ const displayreults=(doc)=>{
                 <tbody>
                   <tr>
                     <td>Serum creatinine (mg/dl)</td>
-                    <td>{opened_report['Serum creatinine (mg/dl)']}</td>
+                    <td>{display_single_report['Serum creatinine (mg/dl)']}</td>
                     <td>0.6 – 1.3 mg/dl</td>
                     <td>
-                      <span className="badge warn">Abnormal</span>
+                      <span className={display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Blood urea (mg/dl)</td>
-                    <td>{opened_report['Blood urea (mg/dl)']}</td>
+                    <td>{display_single_report['Blood urea (mg/dl)']}</td>
                     <td>10 – 40 mg/dl</td>
                     <td>
-                      <span className="badge warn">Abnormal</span>
+                      <span className={display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Hemoglobin level (gms)</td>
-                    <td>{opened_report['Hemoglobin level (gms)']}</td>
+                    <td>{display_single_report['Hemoglobin level (gms)']}</td>
                     <td>12 – 16 g/dl (typical adult)</td>
                     <td>
-                      <span className="badge ok">Normal</span>
+                      <span className={display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Blood pressure (mm/Hg)</td>
-                    <td>{opened_report['Blood pressure (mm/Hg)']}</td>
+                    <td>{display_single_report['Blood pressure (mm/Hg)']}</td>
                     <td>90 – 130 mm/Hg</td>
                     <td>
-                      <span className="badge warn">Abnormal</span>
+                      <span className={display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                   <tr>
                     <td>Albumin in urine</td>
-                    <td>{opened_report['Albumin in urine']}</td>
+                    <td>{display_single_report['Albumin in urine']}</td>
                     <td>0 (negative)</td>
                     <td>
-                      <span className="badge warn">Abnormal</span>
+                      <span className={display_single_report['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
                     </td>
                   </tr>
                 </tbody>

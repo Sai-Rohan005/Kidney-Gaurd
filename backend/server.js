@@ -478,6 +478,46 @@ app.get('/getallreports', async (req, res) => {
 });
 
 
+app.get('/getpatientreport',async (req,res)=>{
+  try {
+    const sessionData = await getSession(req.session.user.sessionToken);
+    const pdetails = await patient_details.findOne({ email: sessionData.username });
+    if(pdetails.reports){
+      return res.json({reports: pdetails.reports.at(-1), message: "Reports found", status: 200 });
+    }
+    return res.json({message:"No reports yet"})
+  } catch (err) {
+    console.error(err);
+    return res.json({ message: "Server error", status: 500 });
+  }
+})
+app.get('/getpatientallreport',async (req,res)=>{
+  try {
+    const sessionData = await getSession(req.session.user.sessionToken);
+    const pdetails = await patient_details.findOne({ email: sessionData.username });
+    if(pdetails.reports){
+      return res.json({reports: pdetails.reports, message: "Reports found", status: 200 });
+    }
+    return res.json({message:"No reports yet"})
+  } catch (err) {
+    console.error(err);
+    return res.json({ message: "Server error", status: 500 });
+  }
+})
+app.get('/getpdetails',async (req,res)=>{
+  try {
+    const sessionData = await getSession(req.session.user.sessionToken);
+    const pdetails = await patient_details.findOne({ email: sessionData.username });
+    if(pdetails){
+      return res.json({pdetails: pdetails, message: "pdetails found", status: 200 });
+    }
+    return res.json({message:"No pdetails yet"})
+  } catch (err) {
+    console.error(err);
+    return res.json({ message: "Server error", status: 500 });
+  }
+})
+
 
 app.post('/getpatientmaindocument',async(req,res)=>{
   // console.log(req.body);
@@ -620,6 +660,7 @@ app.post("/predictckd", async (req, res) => {
   console.log("called predict");
   // console.log(req.body)
   const pdetails  = req.body;
+  const sessionData = await getSession(req.session.user.sessionToken);
   try {
     // console.log(pdetails)
     // ---- Tabular data prediction ----
@@ -684,6 +725,8 @@ app.post("/predictckd", async (req, res) => {
     arrangereport["Hemoglobin level (gms)"]=pdetails.pmail.clinical_data["Hemoglobin level (gms)"]
     arrangereport["Blood pressure (mm/Hg)"]=pdetails.pmail.clinical_data["Blood pressure (mm/Hg)"]
     arrangereport["Albumin in urine"]=pdetails.pmail.clinical_data["Albumin in urine"]
+    arrangereport["doctor"]=sessionData.username
+    arrangereport['date']=new Date()
 
     const updatereports=await patient_details.findOne({"email":pdetails.pmail.email});
     updatereports.reports.push(arrangereport);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect,useRef } from 'react'
 import './PatientDashboard.css'
 import { useNotifications } from '../contexts/NotificationContext'
 import Header from './Header'
@@ -12,6 +12,7 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
   const [uploadtab,setuploadtab]=useState("clinical");
   const [formfile,setformfile]=useState(null);
   const [text_file,settext_file]=useState(null);
+  const [isclinical,setisclinical]=useState(false);
   const [clinicalformdata,setclinicalformdata]=useState({
         "Age of the patient":"",
         "Blood pressure (mm/Hg)":"",
@@ -38,6 +39,131 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
         "Pedal edema (yes/no)":"",
         "Anemia (yes/no)":""
     })
+  
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const statusDotColor = "#22c55e"; 
+  const title = "Chat";
+  const listRef = useRef(null);
+  const [ismessage,setismessage]=useState(false);
+  const styles = {
+  container: {
+    width: "100%",
+    maxWidth: 720,
+    height: "calc(100dvh - 48px)", // fill viewport minus outer padding
+    margin: "0 auto",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+    background: "#ffffff",
+  },
+  header: {
+    padding: "12px 16px",
+    borderBottom: "1px solid #f0f2f5",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  dot: (color) => ({
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: color,
+  }),
+  title: { fontWeight: 600, fontSize: 16 },
+  messages: {
+    flex: 1,
+    padding: 16,
+    overflowY: "auto",
+    background: "#fafafa",
+  },
+  row: {
+    display: "flex",
+    marginBottom: 10,
+    gap: 8,
+  },
+  bubble: (isUser) => ({
+    maxWidth: "85%",
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: isUser ? "#2563eb" : "#ffffff",
+    color: isUser ? "#ffffff" : "#111827",
+    border: isUser ? "none" : "1px solid #e5e7eb",
+    boxShadow: isUser ? "none" : "0 1px 2px rgba(0,0,0,0.04)",
+    whiteSpace: "pre-wrap",
+  }),
+  meta: { fontSize: 11, color: "#6b7280", marginTop: 4 },
+  avatar: (bg = "#e5e7eb") => ({
+    minWidth: 32,
+    height: 32,
+    borderRadius: 999,
+    background: bg,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: 600,
+  }),
+  inputBar: {
+    padding: 12,
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+    borderTop: "1px solid #f0f2f5",
+    display: "flex",
+    gap: 8,
+    background: "#fff",
+  },
+  input: {
+    flex: 1,
+    border: "1px solid #e5e7eb",
+    borderRadius: 999,
+    padding: "12px 14px",
+    outline: "none",
+    fontSize: 14,
+  },
+  button: {
+    border: "none",
+    borderRadius: 999,
+    padding: "0 16px",
+    fontWeight: 600,
+    background: "#2563eb",
+    color: "#fff",
+    cursor: "pointer",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
+  },
+};
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    const userMsg = {
+      id: (crypto?.randomUUID?.() || Math.random().toString(36).slice(2)),
+      role: "user",
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    // Notify parent if provided, but do not render any assistant messages here.
+    if (onSend) {
+      try { onSend(trimmed); } catch {}
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
 
   const [fupload, setfupload] = useState(0);
 
@@ -74,7 +200,6 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
           return;
         }
         setalldoctors(res.data.docdata);
-        console.log(res.data.docdata);
       }catch(err){
         console.log(err);
       }
@@ -153,7 +278,29 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
     }
     getappointments();
   },[])
-  const [reports, setReports] = useState([])
+
+
+
+
+
+  const [reports, setReports] = useState(null)
+
+  useState(()=>{
+    const getresults=async()=>{
+      try{
+        const results=await axios.get("http://localhost:5500/getpatientreport",{withCredentials:true});
+
+        if(results.data.reports){
+          setReports(results.data.reports)
+        }
+
+      }catch(err){
+        console.log(err)
+      }
+    }
+    getresults()
+  },[])
+  
   const [medicalHistory, setMedicalHistory] = useState([
     {
       id: null,
@@ -192,6 +339,35 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
       trend: null
     }
   ])
+  useEffect(()=>{
+    const getresults=async()=>{
+      try{
+        const results=await axios.get("http://localhost:5500/getpatientallreport",{withCredentials:true});
+
+        if(results.data.reports){
+          setMedicalHistory(results.data.reports)
+        }
+
+      }catch(err){
+        console.log(err)
+      }
+    }
+    getresults()
+  },[])
+
+  const [pdetails,setpdetails]=useState(null);
+  useEffect(()=>{
+    const getpdetails=async()=>{
+      const r=await axios.get("http://localhost:5500/getpdetails",{withCredentials:true})
+
+      if(r.data.pdetails){
+        setpdetails(r.data.pdetails)
+      }
+    }
+    getpdetails()
+  },[])
+
+
   const [selectedFiles, setSelectedFiles] = useState([])
   const [availableDoctors, setAvailableDoctors] = useState([])
 
@@ -199,7 +375,7 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
     e.preventDefault();
     try{
         let resp=await axios.post("http://localhost:5500/clinical_data",clinicalformdata,{withCredentials:true});
-        // console.log(resp);
+
         if(resp.data.message=='Clinical data saved'){
             alert("Data uploaded successfully");
         }else{
@@ -219,7 +395,7 @@ const handlechangefile=(e)=>{
 const handlefile=async()=>{
   try{
       let respon=await axios.post("http://localhost:5500/clinical_data",formfile);
-      console.log(respon);
+     
 
   }catch(err){
       console.log(err);
@@ -258,11 +434,6 @@ const handleChange = (e) => {
       if (response.data.status==500) {
         throw new Error("Upload failed");
       }
-      console.log("Upload success:", response);
-      // alert("Files uploaded successfully!");
-      
-      // // ✅ Reset files after upload (if needed)
-      // setSelectedFiles([]);
     } catch (error) {
       console.error("Error uploading files:", error);
       alert("Something went wrong while uploading.");
@@ -313,7 +484,6 @@ const handleChange = (e) => {
       const response = await axios.post("http://localhost:5500/tabFile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      console.log(response.data); // contains extracted text
     } catch (err) {
       console.error(err);
     }
@@ -370,8 +540,8 @@ const handleChange = (e) => {
               </svg>
             </div>
             <div className="card-content">
-              <h4 className="text-label">Current CKD Stage</h4>
-              <span className="stage-value text-heading-3">Stage -</span>
+              <h4 className="text-label">Current CKD Status</h4>
+              <span className="stage-value text-heading-3">{reports!=null ? reports.predict: "-"}</span>
               <span className="badge badge-success">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="20,6 9,17 4,12"></polyline>
@@ -430,9 +600,9 @@ const handleChange = (e) => {
                 <div className="timeline-header">
                   <div className="timeline-date">
                     <span className="date text-body">{record.date ? new Date(record.date).toLocaleDateString() : 'No date'}</span>
-                    <span className="type text-caption">{record.type || 'No type'}</span>
+                    {/* <span className="type text-caption">{record.type || 'No type'}</span> */}
                   </div>
-                  <span className={`badge ${record.trend === 'improving' ? 'badge-success' : record.trend === 'stable' ? 'badge-primary' : 'badge-warning'}`}>
+                  {/* <span className={`badge ${record.trend === 'improving' ? 'badge-success' : record.trend === 'stable' ? 'badge-primary' : 'badge-warning'}`}>
                     {record.trend === 'improving' && (
                       <>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -458,7 +628,7 @@ const handleChange = (e) => {
                       </>
                     )}
                     {!record.trend && 'No data'}
-                  </span>
+                  </span> */}
                 </div>
                 
                 <div className="appointment-info">
@@ -467,20 +637,20 @@ const handleChange = (e) => {
                 
                 <div className="medical-metrics">
                   <div className="metric">
-                    <span className="metric-label text-label">CKD Stage:</span>
-                    <span className="metric-value text-body">{record.ckdStage || 'No data'}</span>
+                    <span className="metric-label text-label">CKD Status:</span>
+                    <span className="metric-value text-body">{record.predict || 'No data'}</span>
                   </div>
                   <div className="metric">
-                    <span className="metric-label text-label">GFR:</span>
-                    <span className="metric-value text-body">{record.gfr || 'No data'} {record.gfr && 'mL/min'}</span>
+                    <span className="metric-label text-label">Hemoglobin level:</span>
+                    <span className="metric-value text-body">{record["Hemoglobin level (gms)"] || 'No data'} {record.gfr && 'gms'}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label text-label">Creatinine:</span>
-                    <span className="metric-value text-body">{record.creatinine || 'No data'} {record.creatinine && 'mg/dL'}</span>
+                    <span className="metric-value text-body">{record["Serum creatinine (mg/dl)"] || 'No data'} {record.creatinine && 'mg/dL'}</span>
                   </div>
                   <div className="metric">
                     <span className="metric-label text-label">Blood Pressure:</span>
-                    <span className="metric-value text-body">{record.bloodPressure || 'No data'}</span>
+                    <span className="metric-value text-body">{record["Blood pressure (mm/Hg)"] || 'No data'}</span>
                   </div>
                 </div>
                 
@@ -592,7 +762,7 @@ const handleChange = (e) => {
         <>
          {/* <div className="container mt-5"> */}
             {/* Tab Buttons */}
-            <div className="tab-button-group">
+            {/* <div className="tab-button-group">
                 <button
                     className={`tab-btn ${fupload === 0 ? "active" : ""}`}
                     onClick={() => setfupload(0)}
@@ -605,80 +775,12 @@ const handleChange = (e) => {
                 >
                     Manual Upload
                 </button>
-            </div>
+            </div> */}
 
             {/* Card Content */}
             <div className={`tab-card card shadow-sm ${fupload === 0 ? "left-tab" : "right-tab"}`}>
                 <div className="card-body">
-                    {fupload === 0 ? (
-                        <div className="upload-area card">
-                        <div className="file-upload-zone">
-                          <div className="upload-icon">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14,2 14,8 20,8"></polyline>
-                              <line x1="12" y1="18" x2="12" y2="12"></line>
-                              <line x1="9" y1="15" x2="15" y2="15"></line>
-                            </svg>
-                          </div>
-                          <h4 className="text-heading-3">Drag and drop files here</h4>
-                          <p className="text-body">or</p>
-                          <label htmlFor="file-upload" className="upload-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="7,10 12,15 17,10"></polyline>
-                              <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Choose Files
-                          </label>
-                          <input
-                            id="file-upload"
-                            type="file"
-                            multiple
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            onChange={handlechangetextfile}
-                            style={{ display: 'none' }}
-                          />
-                          <p className="upload-hint text-caption">Supports PDF, JPG, PNG, DOC files up to 10MB each</p>
-                        </div>
-                
-                        {selectedFiles.length > 0 && (
-                          <div className="selected-files card">
-                            <h4 className="text-heading-3">Selected Files</h4>
-                            <div className="files-list">
-                              {selectedFiles.map((file, index) => (
-                                <div key={index} className="file-item">
-                                  <div className="file-icon">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                      <polyline points="14,2 14,8 20,8"></polyline>
-                                    </svg>
-                                  </div>
-                                  <div className="file-details">
-                                    <span className="file-name text-body">{file.name}</span>
-                                    <span className="file-size text-caption">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                  </div>
-                                  <button className="remove-file" onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                            <button onClick={handletextexract} className="upload-submit-btn">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="17,8 12,3 7,8"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                              </svg>
-                              Upload {selectedFiles.length} Document{selectedFiles.length > 1 ? 's' : ''}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
+                    
                         <>
                             <h5 className="mb-3">Enter Your Details</h5>
                             <div className="card p-4">
@@ -797,7 +899,6 @@ const handleChange = (e) => {
                             </div>
 
                         </>
-                    )}
                 </div>
             </div>
 
@@ -808,10 +909,10 @@ const handleChange = (e) => {
 
       
 
-      <div className="uploaded-documents">
+      {/* <div className="uploaded-documents">
         <h4 className="text-heading-2">Your Uploaded Documents</h4>
         <div className="documents-grid">
-          {uploadedDocuments.map(doc => (
+          {pdetails.ultrasound.map(doc => (
             <div key={doc.id} className="document-card card card-hover">
               <div className="document-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -821,7 +922,6 @@ const handleChange = (e) => {
               </div>
               <div className="document-info">
                 <h5 className="text-body">{doc.name}</h5>
-                {/* <img src={doc} alt="" /> */}
                 <p className="text-caption">Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}</p>
                 <p className="text-caption">Assigned to: {doc.doctor}</p>
               </div>
@@ -837,7 +937,7 @@ const handleChange = (e) => {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   )
 
@@ -848,6 +948,85 @@ const handleChange = (e) => {
         <p className="text-body-large">Schedule consultations with our experienced healthcare professionals</p>
       </div>
 
+      {ismessage && <>
+        
+        <div style={styles.container}>
+      <div >
+          <div style={{ ...styles.header, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={styles.dot(statusDotColor)} />
+              <div style={styles.title}>{title}</div>
+            </div>
+            <button className="btn btn-outline-secondary" onClick={()=>{setismessage(false)}}>x</button>
+          </div>
+      </div>
+
+      <div ref={listRef} style={styles.messages}>
+        {messages.map((m) => {
+          const isUser = m.role === "user";
+          return (
+            <div
+              key={m.id}
+              style={{
+                ...styles.row,
+                justifyContent: isUser ? "flex-end" : "flex-start",
+              }}
+            >
+              {!isUser && <div style={styles.avatar("#e5f0ff")}>A</div>}
+              <div>
+                <div style={styles.bubble(isUser)}>{m.text}</div>
+                <div style={{ ...styles.meta, textAlign: isUser ? "right" : "left" }}>
+                  {isUser ? "You" : "Assistant"} • {formatTime(m.timestamp)}
+                </div>
+              </div>
+              {isUser && <div style={styles.avatar("#e5e7eb")}>Y</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={styles.inputBar}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a message..."
+          style={styles.input}
+        />
+        <button
+          onClick={handleSend}
+          style={{
+            ...styles.button,
+            ...(input.trim() ? {} : styles.buttonDisabled),
+          }}
+          disabled={!input.trim()}
+          aria-label="Send message"
+          title="Send"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+      
+      </>
+
+      }
+
+      {!ismessage && <>
+      
       <div className="doctors-grid">
         {alldoctors.map(doctor => (
           <div key={doctor._id} className="doctor-card card card-hover">
@@ -910,7 +1089,9 @@ const handleChange = (e) => {
         <h4 className="text-heading-2">My Appointments</h4>
         <div className="appointments-list">
           {appointments.map(apt => (
-            <div key={apt.id} className="appointment-card card card-hover">
+            <div key={"1"} className="appointment-card card card-hover">
+
+            
               <div className="appointment-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -923,6 +1104,7 @@ const handleChange = (e) => {
                 <h5 className="text-body">{apt.doctor_email}</h5>
                 <p className="text-caption">{apt.specialty}</p>
                 <p className="text-body">{new Date(apt.date).toLocaleDateString()} at {apt.time}</p>
+                <button className='btn btn-outline-primary' onClick={()=>{setismessage(true)}}>Message</button>
               
               <span className={`badge ${apt.status === 'Confirmed' ? 'badge-success text-white' : 'badge-warning text-dark'}`}>
                 {apt.status === 'Confirmed' && (
@@ -940,132 +1122,475 @@ const handleChange = (e) => {
               </span>
               </div>
             </div>
+            
+
+
           ))}
         </div>
       </div>
+      </>}
+
     </div>
   )
 
   const renderReportsTab = () => (
-    <div className="reports-section">
-      <div className="section-header">
-        <h3 className="text-heading-2">Medical Reports</h3>
-        <p className="text-body-large">View comprehensive reports and recommendations from your care team</p>
+    // <div className="reports-section">
+    //   <div className="section-header">
+    //     <h3 className="text-heading-2">Medical Reports</h3>
+    //     <p className="text-body-large">View comprehensive reports and recommendations from your care team</p>
+    //   </div>
+
+    //   {reports.length === 0 ? (
+    //     <div className="no-reports card">
+    //       <div className="empty-state-icon">
+    //         <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    //           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    //           <polyline points="14,2 14,8 20,8"></polyline>
+    //           <line x1="16" y1="13" x2="8" y2="13"></line>
+    //           <line x1="16" y1="17" x2="8" y2="17"></line>
+    //         </svg>
+    //       </div>
+    //       <h4 className="text-heading-3">Your Reports Are On The Way</h4>
+    //       <p className="text-body">Once your doctor has reviewed your documents, your detailed medical reports will appear here.</p>
+    //       <p className="waiting-message text-caption">
+    //         {uploadedDocuments.some(doc => doc.status === 'Under Review' || doc.status === 'Pending Review') 
+    //           ? 'Your documents are currently being reviewed by our medical team...' 
+    //           : 'Upload documents and book appointments to get started with your health journey'}
+    //       </p>
+    //     </div>
+    //   ) : (
+    //     <div className="reports-grid">
+    //       {reports.map(report => (
+    //         <div key={report.id} className="report-card card card-hover">
+    //           <div className="report-icon">
+    //             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    //               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    //               <polyline points="14,2 14,8 20,8"></polyline>
+    //             </svg>
+    //           </div>
+    //           <div className="report-info">
+    //             <h5 className="text-body">{report.title}</h5>
+    //             <p className="text-caption">By: {report.doctor}</p>
+    //             <p className="text-caption">Date: {report.date}</p>
+    //           </div>
+    //           <button className="view-report-btn">
+    //             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    //               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    //               <circle cx="12" cy="12" r="3"></circle>
+    //             </svg>
+    //             View Report
+    //           </button>
+    //         </div>
+    //       ))}
+    //     </div>
+    //   )}
+    // </div>
+    <>
+  
+    {reports!=null ? (
+    <div key={`1`}  className="ckd-report">
+          <div className="wrap">
+          <div className="card" style={{ position: "relative" }}>
+    
+            <h1 className="title">Chronic Kidney Disease (CKD) Report</h1>
+            <p className="subtitle">
+              Confidential medical document • Generated:{" "}
+              {/* <span>{report.date}</span> */}
+            </p>
+    
+            <div className="grid mb">
+              <div className="section">
+                <h3>Patient Information</h3>
+                <div className="row">
+                  <div className="label">Name</div>
+                  <div className="value">{ "Unknown Patient"}</div>
+                </div>
+                <div className="row">
+                  <div className="label">Age / Sex</div>
+                  <div className="value">24</div>
+                </div>
+                <div className="row">
+                  <div className="label">Patient ID</div>
+                  <div className="value">{"id"}</div>
+                </div>
+                <div className="row">
+                  <div className="label">Date of Birth</div>
+                  <div className="value">{"dob"}</div>
+                </div>
+               
+              </div>
+    
+              <div className="section">
+                <h3>Summary</h3>
+                <div className="row">
+                  <div className="label">CKD Stage (Target_Label)</div>
+                  <div className="value">
+                    <span>{reports.predict}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Serum creatinine (mg/dl)</div>
+                  <div className="value">
+                    <span>{reports['Serum creatinine (mg/dl)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Blood urea (mg/dl)</div>
+                  <div className="value">
+                    <span>{reports['Blood urea (mg/dl)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Hemoglobin level (gms)</div>
+                  <div className="value">
+                    <span>{reports['Hemoglobin level (gms)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Blood pressure (mm/Hg)</div>
+                  <div className="value">
+                    <span>{reports['Blood pressure (mm/Hg)']}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="label">Albumin in urine</div>
+                  <div className="value">
+                    <span>{reports['Albumin in urine']}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+    
+            <div className="section mb">
+              <h3>Laboratory Results</h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Test</th>
+                    <th>Result</th>
+                    <th>Reference Range</th>
+                    <th>Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Serum creatinine (mg/dl)</td>
+                    <td>{reports['Serum creatinine (mg/dl)']}</td>
+                    <td>0.6 – 1.3 mg/dl</td>
+                    <td>
+                      <span className={reports['Serum creatinine (mg/dl)'] >= 0.6 && reports['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{reports['Serum creatinine (mg/dl)'] >= 0.6 && reports['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Blood urea (mg/dl)</td>
+                    <td>{reports['Blood urea (mg/dl)']}</td>
+                    <td>10 – 40 mg/dl</td>
+                    <td>
+                      <span className={reports['Blood urea (mg/dl)'] >= 10 && reports['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{reports['Blood urea (mg/dl)'] >= 10 && reports['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Hemoglobin level (gms)</td>
+                    <td>{reports['Hemoglobin level (gms)']}</td>
+                    <td>12 – 16 g/dl (typical adult)</td>
+                    <td>
+                      <span className={reports['Hemoglobin level (gms)'] >= 12 && reports['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{reports['Hemoglobin level (gms)'] >= 12 && reports['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Blood pressure (mm/Hg)</td>
+                    <td>{reports['Blood pressure (mm/Hg)']}</td>
+                    <td>90 – 130 mm/Hg</td>
+                    <td>
+                      <span className={reports['Blood pressure (mm/Hg)'] >= 90 && reports['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{reports['Blood pressure (mm/Hg)'] >= 90 && reports['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Albumin in urine</td>
+                    <td>{reports['Albumin in urine']}</td>
+                    <td>0 (negative)</td>
+                    <td>
+                      <span className={reports['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{reports['Albumin in urine'] >= 90 && reports['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+    
+            <div className="section mb">
+              <h3>Stage-specific Reference Ranges</h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>No_Disease</th>
+                    <th>Stage_1</th>
+                    <th>Stage_2</th>
+                    <th>Stage_3</th>
+                    <th>Stage_4</th>
+                    <th>Stage_5</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Serum creatinine (mg/dl)</td>
+                    <td>0.6 – 1.3</td>
+                    <td>1.3 – 1.5</td>
+                    <td>1.5 – 2.0</td>
+                    <td>2.0 – 3.5</td>
+                    <td>3.5 – 5.0</td>
+                    <td>5.0 – 12.0</td>
+                  </tr>
+                  <tr>
+                    <td>Blood urea (mg/dl)</td>
+                    <td>10 – 40</td>
+                    <td>30 – 60</td>
+                    <td>50 – 80</td>
+                    <td>80 – 120</td>
+                    <td>120 – 150</td>
+                    <td>150 – 300</td>
+                  </tr>
+                  <tr>
+                    <td>Hemoglobin level (gms)</td>
+                    <td>12 – 16</td>
+                    <td>12 – 14</td>
+                    <td>11 – 13</td>
+                    <td>9 – 11</td>
+                    <td>8 – 10</td>
+                    <td>6 – 9</td>
+                  </tr>
+                  <tr>
+                    <td>Blood pressure (mm/Hg)</td>
+                    <td>90 – 130</td>
+                    <td>130 – 140</td>
+                    <td>135 – 150</td>
+                    <td>145 – 160</td>
+                    <td>155 – 170</td>
+                    <td>170 – 200</td>
+                  </tr>
+                  <tr>
+                    <td>Albumin in urine</td>
+                    <td>0</td>
+                    <td>1 – 2</td>
+                    <td>2 – 3</td>
+                    <td>3 – 4</td>
+                    <td>4 – 5</td>
+                    <td>5</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+    
+            <div className="section">
+              <h3>Doctor&apos;s Notes & Recommendations</h3>
+              <ul>
+                <li>Monitor renal function and blood pressure; lifestyle optimization.</li>
+                <li>Repeat labs as clinically indicated.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {reports.length === 0 ? (
-        <div className="no-reports card">
-          <div className="empty-state-icon">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    ):(
+      <div className="no-reports">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14,2 14,8 20,8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
             </svg>
+            <h4>No Completed Reports</h4>
+            <p>Reports you complete will appear here</p>
           </div>
-          <h4 className="text-heading-3">Your Reports Are On The Way</h4>
-          <p className="text-body">Once your doctor has reviewed your documents, your detailed medical reports will appear here.</p>
-          <p className="waiting-message text-caption">
-            {uploadedDocuments.some(doc => doc.status === 'Under Review' || doc.status === 'Pending Review') 
-              ? 'Your documents are currently being reviewed by our medical team...' 
-              : 'Upload documents and book appointments to get started with your health journey'}
-          </p>
-        </div>
-      ) : (
-        <div className="reports-grid">
-          {reports.map(report => (
-            <div key={report.id} className="report-card card card-hover">
-              <div className="report-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14,2 14,8 20,8"></polyline>
-                </svg>
-              </div>
-              <div className="report-info">
-                <h5 className="text-body">{report.title}</h5>
-                <p className="text-caption">By: {report.doctor}</p>
-                <p className="text-caption">Date: {report.date}</p>
-              </div>
-              <button className="view-report-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                View Report
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    )}
+    
+    </>
+  
   )
 
   const renderAnalyticsTab = () => (
-    <div className="analytics-section">
-      <div className="section-header">
-        <h3 className="text-heading-2">Health Analytics</h3>
-        <p className="text-body-large">Track your kidney health trends and progress over time</p>
-      </div>
+    // <div className="analytics-section">
+    //   <div className="section-header">
+    //     <h3 className="text-heading-2">Health Analytics</h3>
+    //     <p className="text-body-large">Track your kidney health trends and progress over time</p>
+    //   </div>
 
-      {/* Timeframe Filter */}
-      <div className="timeframe-filter">
-        <button className="filter-btn active">3 Months</button>
-        <button className="filter-btn">6 Months</button>
-        <button className="filter-btn">1 Year</button>
-        <button className="filter-btn">All Time</button>
-      </div>
+    //   {/* Timeframe Filter */}
+    //   <div className="timeframe-filter">
+    //     <button className="filter-btn active">3 Months</button>
+    //     <button className="filter-btn">6 Months</button>
+    //     <button className="filter-btn">1 Year</button>
+    //     <button className="filter-btn">All Time</button>
+    //   </div>
 
-      <div className="medical-history">Your GFR has shown consistent improvement over the past 3 months, indicating better kidney function.</div>
+    //   <div className="medical-history">Your GFR has shown consistent improvement over the past 3 months, indicating better kidney function.</div>
 
-      {/* GFR Trend Chart */}
-      <div className="chart-section">
-        <div className="card">
-          <div className="card-header">
-            <h4 className="text-heading-3">GFR Trend Over Time</h4>
-            <span className="text-caption">(mL/min/1.73m²)</span>
-          </div>
-          <div className="chart-container">
-            <div className="enhanced-chart">
-              <div className="chart-bars">
-                <div className="chart-bar improving" style={{height: '68%'}}>
-                  <span className="bar-value text-body">68</span>
-                  <span className="bar-date text-caption">Jun</span>
+    //   {/* GFR Trend Chart */}
+    //   <div className="chart-section">
+    //     <div className="card">
+    //       <div className="card-header">
+    //         <h4 className="text-heading-3">GFR Trend Over Time</h4>
+    //         <span className="text-caption">(mL/min/1.73m²)</span>
+    //       </div>
+    //       <div className="chart-container">
+    //         <div className="enhanced-chart">
+    //           <div className="chart-bars">
+    //             <div className="chart-bar improving" style={{height: '68%'}}>
+    //               <span className="bar-value text-body">68</span>
+    //               <span className="bar-date text-caption">Jun</span>
+    //             </div>
+    //             <div className="chart-bar improving" style={{height: '72%'}}>
+    //               <span className="bar-value text-body">72</span>
+    //               <span className="bar-date text-caption">Jul</span>
+    //             </div>
+    //             <div className="chart-bar improving" style={{height: '75%'}}>
+    //               <span className="bar-value text-body">75</span>
+    //               <span className="bar-date text-caption">Aug</span>
+    //             </div>
+    //           </div>
+    //           <div className="chart-trend-line"></div>
+    //           <div className="chart-legend">
+    //             <div className="legend-item">
+    //               <span className="legend-color improving"></span>
+    //               <span className="text-caption">Improving Trend</span>
+    //             </div>
+    //           </div>
+    //         </div>
+    //       </div>
+    //     </div>
+    //   </div>
+
+    //   {/* Summary Section */}
+    //   <div className="analytics-summary">
+    //     <div className="summary-card">
+    //       <h4 className="text-heading-3">Trend Analysis</h4>
+    //       <div className="trend-indicator improving">
+    //         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    //           <polyline points="20,6 9,17 4,12"></polyline>
+    //         </svg>
+    //         <span>Improving Trend</span>
+    //       </div>
+    //       <p className="text-body">Your GFR has shown consistent improvement over the past 3 months, indicating better kidney function.</p>
+    //     </div>
+    //   </div>
+    // </div>
+
+        <div className="image-viewer">
+          
+
+            <div className="card">
+              <aside className="Thumbnails-sidebar" aria-label="Thumbnails sidebar">
+              <div className="Thumbnails-sidebar-header">Images</div>
+              <div id="thumbs" className="thumbs" role="list">
+              {pdetails.ultrasound_data && pdetails.ultrasound_data.length > 0 ? (
+                pdetails.ultrasound_data.map((imgSrc, index) => (
+                  <>
+                  <div key={pdetails.patientEmail+pdetails.ultrasound_data.length} className="thumb" role="listitem">
+                  <img
+                  src={imgSrc}
+                  alt={`Thumbnail ${index + 1}`}
+                  style={{
+                    height: "var(--thumb-size)",
+                    borderRadius: "8px",
+                    objectFit: "cover",
+                  }}
+                  onClick={() => {
+                    setisclinical(false);
+                    document.getElementById("mainImage").src = imgSrc;
+                    document.getElementById("mainImage").hidden = false;
+                    document.getElementById("viewerTitle").textContent = `Image ${index + 1} of ${pdetails.ultrasound_data.length}`;
+                    document.getElementById("viewerMeta").textContent = pdetails.patientEmail;
+                    document.getElementById("viewerFooter").textContent = pdetails.description || "No description available";
+                  }}
+                  />
+                  </div>
+                  </>
+                ))
+              ) : (
+                <p style={{ padding: "10px", color: "var(--muted)" }}>No images available</p>
+              )}
+              
+              <button className="btn btn-primary" onClick={()=>{setisclinical(true)}}>Clinical Data</button>
+              
+              {/* <button className="fixed-btn bg-success text-white" onClick={()=>handlepredict(pdetails)}>
+                Results
+                </button> */}
+                
+                <div style={{ position: "fixed", bottom: "16px", left: "0", right: "0", zIndex: 9999 }}>
+                <div className="d-flex align-items-center justify-content-between px-3">
+                
+                {/* Left empty space */}
+                <div></div>
+                
+               
                 </div>
-                <div className="chart-bar improving" style={{height: '72%'}}>
-                  <span className="bar-value text-body">72</span>
-                  <span className="bar-date text-caption">Jul</span>
                 </div>
-                <div className="chart-bar improving" style={{height: '75%'}}>
-                  <span className="bar-value text-body">75</span>
-                  <span className="bar-date text-caption">Aug</span>
+                
+                
                 </div>
+              </aside>
+              <main className="viewer"  aria-live="polite">
+              {isclinical ?(
+                <>
+                <div className="viewer-header">
+                <div className="viewer-title" id="viewerTitle">
+                Clinical Data
+                </div>
+                <div
+                className="viewer-meta"
+                id="viewerMeta"
+                style={{ color: "var(--muted)", fontSize: "12px" }}
+                >
+                {pdetails.patientEmail}
+                </div>
+                </div>
+                <div className="viewer-main" style={{ padding: "20px", overflowY: "auto" }}>
+                <table className="table">
+                <thead>
+                <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                {Object.entries(pdetails.clinical_data || {}).map(([key, value]) => (
+                  <tr key={key}>
+                        <td>{key}</td>
+                        <td>{value}</td>
+                      </tr>
+                    ))}
+                    </tbody>
+                    
+                    </table>
+                    </div>
+                    <div className="viewer-footer" id="viewerFooter">
+                    {pdetails.description || "No description available"}
+                    </div>
+                    </>
+                  ):(
+                    <>
+                    <div className="viewer-header">
+                    <div className="viewer-title" id="viewerTitle">
+                    Select an image
+                    </div>
+                    <div
+                    className="viewer-meta"
+                    id="viewerMeta"
+                    style={{ color: "var(--muted)", fontSize: "12px" }}
+                    >
+                    —
+                    </div>
+                    </div>
+                    <div className="viewer-main">
+                    <img id="mainImage" alt="Selected preview" src="" hidden />
+                    </div>
+                    <div className="viewer-footer" id="viewerFooter">
+                    No image selected
+                    </div>
+                    </>
+                  )}
+                  </main>
               </div>
-              <div className="chart-trend-line"></div>
-              <div className="chart-legend">
-                <div className="legend-item">
-                  <span className="legend-color improving"></span>
-                  <span className="text-caption">Improving Trend</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Section */}
-      <div className="analytics-summary">
-        <div className="summary-card">
-          <h4 className="text-heading-3">Trend Analysis</h4>
-          <div className="trend-indicator improving">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="20,6 9,17 4,12"></polyline>
-            </svg>
-            <span>Improving Trend</span>
-          </div>
-          <p className="text-body">Your GFR has shown consistent improvement over the past 3 months, indicating better kidney function.</p>
-        </div>
-      </div>
-    </div>
+                  </div>
   )
 
   return (
@@ -1133,7 +1658,7 @@ const handleChange = (e) => {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
           </svg>
-          Analytics
+          All docs
         </button>
       </div>
 
