@@ -1,6 +1,9 @@
 import React, { useState, useEffect,useRef } from 'react'
 import './DoctorDashboard.css'
 import axios from 'axios'
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { FaDownload } from "react-icons/fa";
 
 function formatTime(date) {
   const d = typeof date === "string" ? new Date(date) : date;
@@ -337,6 +340,21 @@ const DoctorDashboard = ({ activeView }) => {
   }
 };
 
+  const reportRef = useRef();
+
+  const downloadPdf = async () => {
+    const element = reportRef.current;
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`CKD_Report_${show_single_report.name}.pdf`);
+  };
+
 const setreports=(report)=>{
   const matchedPatient = Array.isArray(allpatient)
   ? allpatient.find((r) => r.email === report.patientEmail)
@@ -453,12 +471,69 @@ const displayreults=(doc)=>{
 
       {!ismessage && show_single_report && 
         <>
-        <div key={`1`}  className="ckd-report">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end", // aligns buttons to the right
+              alignItems: "center",
+              gap: "10px", // spacing between buttons
+            }}
+          >
+            <button
+              onClick={downloadPdf}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "10px 16px",
+                cursor: "pointer",
+              }}
+            >
+              <FaDownload size={18} />
+              Download PDF
+            </button>
+
+            <button
+            aria-label="Close"
+            onClick={() => setshow_single_report(false)}
+            style={{
+              backgroundColor: "transparent",
+              border: "1px solid #ccc",
+              borderRadius: "50%",
+              width: "32px",
+              height: "32px",
+              fontSize: "20px",
+              fontWeight: "bold",
+              color: "#555",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = "#f0f0f0";
+              e.currentTarget.style.borderColor = "#007bff";
+              e.currentTarget.style.color = "#007bff";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.borderColor = "#ccc";
+              e.currentTarget.style.color = "#555";
+            }}
+          >
+            ×
+          </button>
+
+          </div>
+
+        <div ref={reportRef} className="ckd-report">
           <div className="wrap">
           <div className="card" style={{ position: "relative" }}>
-            <button className="close-btn" aria-label="Close" onClick={()=>setshow_single_report(false)}>
-              ×
-            </button>
     
             <h1 className="title">Chronic Kidney Disease (CKD) Report</h1>
             <p className="subtitle">
@@ -499,31 +574,31 @@ const displayreults=(doc)=>{
                 <div className="row">
                   <div className="label">Serum creatinine (mg/dl)</div>
                   <div className="value">
-                    <span>{display_single_report['Serum creatinine (mg/dl)']}</span>
+                    <span>{display_single_report['Serum creatinine (mg/dl)']!=null ? display_single_report['Serum creatinine (mg/dl)']:"nan"}</span>
                   </div>
                 </div>
                 <div className="row">
                   <div className="label">Blood urea (mg/dl)</div>
                   <div className="value">
-                    <span>{display_single_report['Blood urea (mg/dl)']}</span>
+                    <span>{display_single_report['Blood urea (mg/dl)']!=null ? display_single_report['Blood urea (mg/dl)'] : "nan"}</span>
                   </div>
                 </div>
                 <div className="row">
                   <div className="label">Hemoglobin level (gms)</div>
                   <div className="value">
-                    <span>{display_single_report['Hemoglobin level (gms)']}</span>
+                    <span>{display_single_report['Hemoglobin level (gms)']!=null ? display_single_report['Hemoglobin level (gms)'] :"nan"}</span>
                   </div>
                 </div>
                 <div className="row">
                   <div className="label">Blood pressure (mm/Hg)</div>
                   <div className="value">
-                    <span>{display_single_report['Blood pressure (mm/Hg)']}</span>
+                    <span>{display_single_report['Blood pressure (mm/Hg)']!=null ? display_single_report['Blood pressure (mm/Hg)'] : "nan"}</span>
                   </div>
                 </div>
                 <div className="row">
                   <div className="label">Albumin in urine</div>
                   <div className="value">
-                    <span>{display_single_report['Albumin in urine']}</span>
+                    <span>{display_single_report['Albumin in urine']!=null ? display_single_report['Albumin in urine']:"nan"}</span>
                   </div>
                 </div>
               </div>
@@ -543,7 +618,7 @@ const displayreults=(doc)=>{
                 <tbody>
                   <tr>
                     <td>Serum creatinine (mg/dl)</td>
-                    <td>{display_single_report['Serum creatinine (mg/dl)']}</td>
+                    <td>{display_single_report['Serum creatinine (mg/dl)']!=null ?display_single_report['Serum creatinine (mg/dl)'] :"nan"}</td>
                     <td>0.6 – 1.3 mg/dl</td>
                     <td>
                       <span className={display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
@@ -938,212 +1013,270 @@ const displayreults=(doc)=>{
       </div>
       {clickedviewreport===true ? (
         // <div key={`${report?.patientEmail}-${report?.date || report?.id}`}  className="ckd-report">
-        <div key={`1`}  className="ckd-report">
-          <div className="wrap">
-          <div className="card" style={{ position: "relative" }}>
-            <button className="close-btn" aria-label="Close" onClick={()=>setClickedviewreport(false)}>
-              ×
+        <>
+        <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end", // aligns buttons to the right
+              alignItems: "center",
+              gap: "10px", // spacing between buttons
+            }}
+          >
+            <button
+              onClick={downloadPdf}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "10px 16px",
+                cursor: "pointer",
+              }}
+            >
+              <FaDownload size={18} />
+              Download PDF
             </button>
-    
-            <h1 className="title">Chronic Kidney Disease (CKD) Report</h1>
-            <p className="subtitle">
-              Confidential medical document • Generated:{" "}
-              {/* <span>{opened_report.date}</span> */}
-            </p>
-    
-            <div className="grid mb">
-              <div className="section">
-                <h3>Patient Information</h3>
-                <div className="row">
-                  <div className="label">Name</div>
-                  <div className="value">{patient?.name ?? "Unknown Patient"}</div>
+
+            <button
+            aria-label="Close"
+            onClick={() => setshow_single_report(false)}
+            style={{
+              backgroundColor: "transparent",
+              border: "1px solid #ccc",
+              borderRadius: "50%",
+              width: "32px",
+              height: "32px",
+              fontSize: "20px",
+              fontWeight: "bold",
+              color: "#555",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = "#f0f0f0";
+              e.currentTarget.style.borderColor = "#007bff";
+              e.currentTarget.style.color = "#007bff";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.borderColor = "#ccc";
+              e.currentTarget.style.color = "#555";
+            }}
+          >
+            ×
+          </button>
+
+          </div>
+          <div ref={reportRef}  className="ckd-report">
+            <div className="wrap">
+            <div className="card" style={{ position: "relative" }}>
+      
+              <h1 className="title">Chronic Kidney Disease (CKD) Report</h1>
+              <p className="subtitle">
+                Confidential medical document • Generated:{" "}
+                {/* <span>{opened_report.date}</span> */}
+              </p>
+      
+              <div className="grid mb">
+                <div className="section">
+                  <h3>Patient Information</h3>
+                  <div className="row">
+                    <div className="label">Name</div>
+                    <div className="value">{patient?.name ?? "Unknown Patient"}</div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Age / Sex</div>
+                    <div className="value">24</div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Patient ID</div>
+                    <div className="value">{patient?._id ?? "id"}</div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Date of Birth</div>
+                    <div className="value">{patient?.dob ?? "dob"}</div>
+                  </div>
+                
                 </div>
-                <div className="row">
-                  <div className="label">Age / Sex</div>
-                  <div className="value">24</div>
+      
+                <div className="section">
+                  <h3>Summary</h3>
+                  <div className="row">
+                    <div className="label">CKD Stage (Target_Label)</div>
+                    <div className="value">
+                      <span>{opened_report.predict}</span>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Serum creatinine (mg/dl)</div>
+                    <div className="value">
+                      <span>{opened_report['Serum creatinine (mg/dl)']!=null ? opened_report['Serum creatinine (mg/dl)'] : "nan"}</span>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Blood urea (mg/dl)</div>
+                    <div className="value">
+                      <span>{opened_report['Blood urea (mg/dl)']!=null ? opened_report['Blood urea (mg/dl)']:"nan"}</span>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Hemoglobin level (gms)</div>
+                    <div className="value">
+                      <span>{opened_report['Hemoglobin level (gms)']!=null ? opened_report['Hemoglobin level (gms)']: "nan"}</span>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Blood pressure (mm/Hg)</div>
+                    <div className="value">
+                      <span>{opened_report['Blood pressure (mm/Hg)']!=null ? opened_report['Blood pressure (mm/Hg)'] :"nan"}</span>
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div className="label">Albumin in urine</div>
+                    <div className="value">
+                      <span>{opened_report['Albumin in urine']!=null ? opened_report['Albumin in urine'] : "nan"}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="row">
-                  <div className="label">Patient ID</div>
-                  <div className="value">{patient?._id ?? "id"}</div>
-                </div>
-                <div className="row">
-                  <div className="label">Date of Birth</div>
-                  <div className="value">{patient?.dob ?? "dob"}</div>
-                </div>
-               
               </div>
-    
-              <div className="section">
-                <h3>Summary</h3>
-                <div className="row">
-                  <div className="label">CKD Stage (Target_Label)</div>
-                  <div className="value">
-                    <span>{opened_report.predict}</span>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="label">Serum creatinine (mg/dl)</div>
-                  <div className="value">
-                    <span>{opened_report['Serum creatinine (mg/dl)']}</span>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="label">Blood urea (mg/dl)</div>
-                  <div className="value">
-                    <span>{opened_report['Blood urea (mg/dl)']}</span>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="label">Hemoglobin level (gms)</div>
-                  <div className="value">
-                    <span>{opened_report['Hemoglobin level (gms)']}</span>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="label">Blood pressure (mm/Hg)</div>
-                  <div className="value">
-                    <span>{opened_report['Blood pressure (mm/Hg)']}</span>
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="label">Albumin in urine</div>
-                  <div className="value">
-                    <span>{opened_report['Albumin in urine']}</span>
-                  </div>
-                </div>
+      
+              <div className="section mb">
+                <h3>Laboratory Results</h3>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Test</th>
+                      <th>Result</th>
+                      <th>Reference Range</th>
+                      <th>Flag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Serum creatinine (mg/dl)</td>
+                      <td>{display_single_report['Serum creatinine (mg/dl)']!=null ? display_single_report['Serum creatinine (mg/dl)'] :"nan"}</td>
+                      <td>0.6 – 1.3 mg/dl</td>
+                      <td>
+                        <span className={display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Blood urea (mg/dl)</td>
+                      <td>{display_single_report['Blood urea (mg/dl)']}</td>
+                      <td>10 – 40 mg/dl</td>
+                      <td>
+                        <span className={display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Hemoglobin level (gms)</td>
+                      <td>{display_single_report['Hemoglobin level (gms)']}</td>
+                      <td>12 – 16 g/dl (typical adult)</td>
+                      <td>
+                        <span className={display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Blood pressure (mm/Hg)</td>
+                      <td>{display_single_report['Blood pressure (mm/Hg)']}</td>
+                      <td>90 – 130 mm/Hg</td>
+                      <td>
+                        <span className={display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Albumin in urine</td>
+                      <td>{display_single_report['Albumin in urine']}</td>
+                      <td>0 (negative)</td>
+                      <td>
+                        <span className={display_single_report['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </div>
-    
-            <div className="section mb">
-              <h3>Laboratory Results</h3>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Test</th>
-                    <th>Result</th>
-                    <th>Reference Range</th>
-                    <th>Flag</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Serum creatinine (mg/dl)</td>
-                    <td>{display_single_report['Serum creatinine (mg/dl)']}</td>
-                    <td>0.6 – 1.3 mg/dl</td>
-                    <td>
-                      <span className={display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Blood urea (mg/dl)</td>
-                    <td>{display_single_report['Blood urea (mg/dl)']}</td>
-                    <td>10 – 40 mg/dl</td>
-                    <td>
-                      <span className={display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Hemoglobin level (gms)</td>
-                    <td>{display_single_report['Hemoglobin level (gms)']}</td>
-                    <td>12 – 16 g/dl (typical adult)</td>
-                    <td>
-                      <span className={display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Blood pressure (mm/Hg)</td>
-                    <td>{display_single_report['Blood pressure (mm/Hg)']}</td>
-                    <td>90 – 130 mm/Hg</td>
-                    <td>
-                      <span className={display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Albumin in urine</td>
-                    <td>{display_single_report['Albumin in urine']}</td>
-                    <td>0 (negative)</td>
-                    <td>
-                      <span className={display_single_report['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-    
-            <div className="section mb">
-              <h3>Stage-specific Reference Ranges</h3>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Metric</th>
-                    <th>No_Disease</th>
-                    <th>Stage_1</th>
-                    <th>Stage_2</th>
-                    <th>Stage_3</th>
-                    <th>Stage_4</th>
-                    <th>Stage_5</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Serum creatinine (mg/dl)</td>
-                    <td>0.6 – 1.3</td>
-                    <td>1.3 – 1.5</td>
-                    <td>1.5 – 2.0</td>
-                    <td>2.0 – 3.5</td>
-                    <td>3.5 – 5.0</td>
-                    <td>5.0 – 12.0</td>
-                  </tr>
-                  <tr>
-                    <td>Blood urea (mg/dl)</td>
-                    <td>10 – 40</td>
-                    <td>30 – 60</td>
-                    <td>50 – 80</td>
-                    <td>80 – 120</td>
-                    <td>120 – 150</td>
-                    <td>150 – 300</td>
-                  </tr>
-                  <tr>
-                    <td>Hemoglobin level (gms)</td>
-                    <td>12 – 16</td>
-                    <td>12 – 14</td>
-                    <td>11 – 13</td>
-                    <td>9 – 11</td>
-                    <td>8 – 10</td>
-                    <td>6 – 9</td>
-                  </tr>
-                  <tr>
-                    <td>Blood pressure (mm/Hg)</td>
-                    <td>90 – 130</td>
-                    <td>130 – 140</td>
-                    <td>135 – 150</td>
-                    <td>145 – 160</td>
-                    <td>155 – 170</td>
-                    <td>170 – 200</td>
-                  </tr>
-                  <tr>
-                    <td>Albumin in urine</td>
-                    <td>0</td>
-                    <td>1 – 2</td>
-                    <td>2 – 3</td>
-                    <td>3 – 4</td>
-                    <td>4 – 5</td>
-                    <td>5</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-    
-            <div className="section">
-              <h3>Doctor&apos;s Notes & Recommendations</h3>
-              <ul>
-                <li>Monitor renal function and blood pressure; lifestyle optimization.</li>
-                <li>Repeat labs as clinically indicated.</li>
-              </ul>
+      
+              <div className="section mb">
+                <h3>Stage-specific Reference Ranges</h3>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th>No_Disease</th>
+                      <th>Stage_1</th>
+                      <th>Stage_2</th>
+                      <th>Stage_3</th>
+                      <th>Stage_4</th>
+                      <th>Stage_5</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Serum creatinine (mg/dl)</td>
+                      <td>0.6 – 1.3</td>
+                      <td>1.3 – 1.5</td>
+                      <td>1.5 – 2.0</td>
+                      <td>2.0 – 3.5</td>
+                      <td>3.5 – 5.0</td>
+                      <td>5.0 – 12.0</td>
+                    </tr>
+                    <tr>
+                      <td>Blood urea (mg/dl)</td>
+                      <td>10 – 40</td>
+                      <td>30 – 60</td>
+                      <td>50 – 80</td>
+                      <td>80 – 120</td>
+                      <td>120 – 150</td>
+                      <td>150 – 300</td>
+                    </tr>
+                    <tr>
+                      <td>Hemoglobin level (gms)</td>
+                      <td>12 – 16</td>
+                      <td>12 – 14</td>
+                      <td>11 – 13</td>
+                      <td>9 – 11</td>
+                      <td>8 – 10</td>
+                      <td>6 – 9</td>
+                    </tr>
+                    <tr>
+                      <td>Blood pressure (mm/Hg)</td>
+                      <td>90 – 130</td>
+                      <td>130 – 140</td>
+                      <td>135 – 150</td>
+                      <td>145 – 160</td>
+                      <td>155 – 170</td>
+                      <td>170 – 200</td>
+                    </tr>
+                    <tr>
+                      <td>Albumin in urine</td>
+                      <td>0</td>
+                      <td>1 – 2</td>
+                      <td>2 – 3</td>
+                      <td>3 – 4</td>
+                      <td>4 – 5</td>
+                      <td>5</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+      
+              <div className="section">
+                <h3>Doctor&apos;s Notes & Recommendations</h3>
+                <ul>
+                  <li>Monitor renal function and blood pressure; lifestyle optimization.</li>
+                  <li>Repeat labs as clinically indicated.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        </>
 
       ):(
 

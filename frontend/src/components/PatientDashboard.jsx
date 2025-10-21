@@ -1,9 +1,10 @@
 import React, { useState, useEffect,useRef } from 'react'
 import './PatientDashboard.css'
 import { useNotifications } from '../contexts/NotificationContext'
-import Header from './Header'
-import Layout from './layout'
 import axios from 'axios'
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { FaDownload } from "react-icons/fa";
 
 const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) => {
   const { notifyAppointmentBooked, notifyDocumentUploaded } = useNotifications()
@@ -280,7 +281,20 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
   },[])
 
 
+  const reportRef = useRef();
 
+  const downloadPdf = async () => {
+    const element = reportRef.current;
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`CKD_Report.pdf`);
+  };
 
 
   const [reports, setReports] = useState(null)
@@ -1188,7 +1202,67 @@ const handleChange = (e) => {
     <>
   
     {reports!=null ? (
-    <div key={`1`}  className="ckd-report">
+      <> 
+      <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end", // aligns buttons to the right
+                    alignItems: "center",
+                    gap: "10px", // spacing between buttons
+                  }}
+                >
+                  <button
+                    onClick={downloadPdf}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      backgroundColor: "#007bff",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "10px 16px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FaDownload size={18} />
+                    Download PDF
+                  </button>
+      
+                  <button
+                  aria-label="Close"
+                  onClick={() => setshow_single_report(false)}
+                  style={{
+                    backgroundColor: "transparent",
+                    border: "1px solid #ccc",
+                    borderRadius: "50%",
+                    width: "32px",
+                    height: "32px",
+                    fontSize: "20px",
+                    fontWeight: "bold",
+                    color: "#555",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f0f0f0";
+                    e.currentTarget.style.borderColor = "#007bff";
+                    e.currentTarget.style.color = "#007bff";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.borderColor = "#ccc";
+                    e.currentTarget.style.color = "#555";
+                  }}
+                >
+                  ×
+                </button>
+      
+                </div>
+    <div ref={reportRef} className="ckd-report">
           <div className="wrap">
           <div className="card" style={{ position: "relative" }}>
     
@@ -1391,6 +1465,7 @@ const handleChange = (e) => {
           </div>
         </div>
       </div>
+      </>
 
     ):(
       <div className="no-reports">
