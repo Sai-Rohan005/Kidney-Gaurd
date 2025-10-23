@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pystart": "uvicorn python.main:app --reload --host 0.0.0.0 --port 8001"
+    "pystart": "uvicorn python.main:app --reload --host 0.0.0.0 --port 8001",
+    "start": "node index.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
