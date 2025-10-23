@@ -40,6 +40,7 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
         "Pedal edema (yes/no)":"",
         "Anemia (yes/no)":""
     })
+  const [clickedviewreport,setClickedviewreport]=useState(false);
   
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -503,6 +504,13 @@ const handleChange = (e) => {
     }
   };
 
+  const handleclickreport=async (d)=>{
+    if(d){
+      setReports(d);
+      setClickedviewreport(true);
+    }
+  }
+
 
   const handleBookAppointment = async(doctor, date, time,problem) => {
       try{
@@ -572,8 +580,8 @@ const handleChange = (e) => {
               </svg>
             </div>
             <div className="card-content">
-              <h4 className="text-label">Latest GFR</h4>
-              <span className="gfr-value text-heading-3">75 <span className="text-caption">mL/min</span></span>
+              <h4 className="text-label">Blood pressure</h4>
+              <span className="gfr-value text-heading-3">{'No data'} <span className="text-caption">mL/min</span></span>
               <span className="badge badge-primary">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1201,7 +1209,7 @@ const handleChange = (e) => {
     // </div>
     <>
   
-    {reports!=null ? (
+    {clickedviewreport && reports!=null ? (
       <> 
       <div
                   style={{
@@ -1467,16 +1475,59 @@ const handleChange = (e) => {
       </div>
       </>
 
-    ):(
-      <div className="no-reports">
+    ):(<>
+    <div></div>
+    </>)}
+      <div className="documents-grid">
+                  {!clickedviewreport && medicalHistory.map(doc => (
+                    <div key={`${doc.patientEmail}-${doc.date}-${doc.time}`} className="document-card card card-hover">
+              <div className="document-header">
+                <div className="document-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14,2 14,8 20,8"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div className="document-details">
+                <div className="detail-item">
+                  <span className="text-label">Doctor:</span>
+                  <span className="text-body">{doc.doctor}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="text-label">Result</span>
+                  <span className="text-body">{doc.predict}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="text-label">Date:</span>
+                  <span className="text-caption">{new Date(doc.date).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <button 
+                className="review-btn"
+                onClick={() => handleclickreport(doc)}
+                >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View Report
+              </button>
+            </div>
+          ))}
+          
+          {!clickedviewreport && medicalHistory.length === 0 && (
+            <div className="no-documents">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14,2 14,8 20,8"></polyline>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14,2 14,8 20,8"></polyline>
             </svg>
-            <h4>No Completed Reports</h4>
-            <p>Reports you complete will appear here</p>
+            <h4>No reports generated</h4>
+            <p>Wait for the doctor</p>
+            </div>
+          )}
           </div>
-    )}
+
     
     </>
   

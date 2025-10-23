@@ -27,6 +27,7 @@ import Layout from './components/layout'
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import Chat from './components/chattest'
 
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
               <Route path="/profile" element={<MyProfile />} />
               <Route path="/patient-dashboard" element={<PatientDashboard />} />
               <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+              <Route path="/chat" element={<Chat />} />
             </Routes>
     
               {/* </Header> */}

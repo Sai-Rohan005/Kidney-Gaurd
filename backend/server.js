@@ -428,54 +428,70 @@ app.get('/getallreports', async (req, res) => {
     const sessionData = await getSession(req.session.user.sessionToken);
     const ddetails = await doctor_details.findOne({ email: sessionData.username });
 
-    if (!ddetails) {
+    if (!ddetails)
       return res.json({ message: "Doctor details not found", status: 404 });
-    }
 
-    let reports = [];
-    let patients = [];
+    // console.log("All appointments:", ddetails.appointments.length);
 
-    // Filter completed appointments and run async logic in parallel
-    const completedAppointments = ddetails.appointments.filter(app => app.status === "completed");
+    // Map over all appointments, not just completed
+    const results = await Promise.all(ddetails.appointments.map(async (appointment) => {
+      // console.log("Checking patient:", appointment.patientEmail);
 
-    const results = await Promise.all(completedAppointments.map(async (appointment) => {
-      const pdetails = await patient_details.findOne({ email: appointment.patientEmail });
-      if (!pdetails || !Array.isArray(pdetails.reports) || pdetails.reports.length === 0) {
-        return null; // skip if no reports
+      const pdetails = await patient_details.findOne({ email: appointment.patientEmail.toLowerCase() });
+      if (!pdetails) {
+        // console.log("No patient details found for:", appointment.patientEmail);
+        return null;
       }
 
-      const lastReport = pdetails.reports.at(-1); // latest report
+      const hasReports = Array.isArray(pdetails.reports) && pdetails.reports.length > 0;
+      const isCompleted = appointment.status && appointment.status.toLowerCase() === "completed";
 
-      const ptnt = await userSchema.findOne({ email: appointment.patientEmail });
+      // Only include if completed OR has reports
+      if (!isCompleted && !hasReports) {
+        // console.log(`Skipping ${appointment.patientEmail} — no reports & not completed`);
+        return null;
+      }
+
+      let lastReport = null;
+      if (hasReports) {
+        lastReport = pdetails.reports.at(-1); // latest report
+        // console.log(`Found ${pdetails.reports.length} reports for ${appointment.patientEmail}`);
+      }
+
+      const ptnt = await userSchema.findOne({ email: appointment.patientEmail.toLowerCase() });
       if (!ptnt) {
-        return null; // skip if user details not found
+        // console.log("No userSchema found for:", appointment.patientEmail);
+        return null;
       }
 
       return {
         patient: ptnt,
-        report: {
-          ...lastReport,         
-          patientEmail: appointment.patientEmail  
-        }
+        report: lastReport
+          ? { ...lastReport, patientEmail: appointment.patientEmail }
+          : { message: "No report available", patientEmail: appointment.patientEmail },
       };
-
     }));
 
-    // Filter out nulls and organize the data
-    results.forEach(result => {
-      if (result) {
-        patients.push(result.patient);
-        reports.push(result.report);
-      }
-    });
+    const filteredResults = results.filter(Boolean);
+    const patients = filteredResults.map(r => r.patient);
+    const reports = filteredResults.map(r => r.report);
 
-    return res.json({ patient: patients, reports: reports, message: "Reports found", status: 200 });
+    // console.log("Final patients:", patients.length, "Final reports:", reports.length);
+
+    return res.json({
+      patient: patients,
+      reports: reports,
+      message: "Reports found",
+      status: 200,
+    });
 
   } catch (err) {
     console.error(err);
     return res.json({ message: "Server error", status: 500 });
   }
 });
+
+
 
 
 app.get('/getpatientreport',async (req,res)=>{
@@ -536,6 +552,62 @@ app.post('/getpatientmaindocument',async(req,res)=>{
     return res.status(500).json({ message: "Server error" });
   }
 })
+
+app.post('/completeappointment', async (req, res) => {
+  const { patientEmail, date } = req.body;
+  const sessionData = await getSession(req.session.user.sessionToken);
+  try {
+    const pdetails = await patient_details.findOne({ email: patientEmail });
+
+    if (!pdetails) {
+      return res.json({ message: "Patient not found", status: 404 });
+    }
+    const ddetails=await doctor_details.findOne({email:sessionData.username});
+    if (!ddetails) {
+      return res.json({ message: "doctor not found", status: 404 });
+    }
+
+
+    // Track if we updated anything
+    let updated = false;
+
+    // Normalize the date input for reliable comparison
+    const reqDate = new Date(date).toISOString().split('T')[0]; // keep only YYYY-MM-DD
+    ddetails.appointments.forEach((app)=>{
+      const storedDate = new Date(app.date).toISOString().split('T')[0];
+      if (storedDate === reqDate) {
+        app.status = "completed";
+        updated = true;
+      }
+    })
+    // Update the matching appointment
+    pdetails.appointment_dates.forEach((appointment) => {
+      const storedDate = new Date(appointment.date).toISOString().split('T')[0];
+      if (storedDate === reqDate) {
+        appointment.status = "completed";
+        updated = true;
+      }
+    });
+
+    if (!updated) {
+      return res.json({ message: "No appointment found for given date", status: 404 });
+    }
+
+    // Tell Mongoose this nested array was modified
+    pdetails.markModified('appointment_dates');
+    ddetails.markModified('appointments')
+
+    await pdetails.save();
+    await ddetails.save();
+
+    return res.json({ message: "Appointment marked as completed", status: 200 });
+  } catch (err) {
+    console.error("Error completing appointment:", err);
+    return res.json({ message: "Server error", status: 500 });
+  }
+});
+
+
 
 
 
@@ -718,6 +790,7 @@ app.post("/predictckd", async (req, res) => {
     arrangereport["name"]=getalldetails.name
     arrangereport["age"]=calculateAge(getalldetails.dob)
     arrangereport["id"]=getalldetails._id
+    arrangereport["email"]=pdetails.pmail.email
     arrangereport["dob"]=getalldetails.dob
     arrangereport["predict"]=stage[maxIndex]
     arrangereport["Serum creatinine (mg/dl)"]=pdetails.pmail.clinical_data["Serum creatinine (mg/dl)"]
@@ -772,6 +845,7 @@ app.post("/predictckd", async (req, res) => {
   
   
 
-app.listen(5500,()=>{
-    console.log("on port 5500")
-})
+  module.exports=app;
+// app.listen(5500,()=>{
+//     console.log("on port 5500")
+// })

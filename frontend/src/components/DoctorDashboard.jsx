@@ -43,7 +43,7 @@ const DoctorDashboard = ({ activeView }) => {
   const [loading, setLoading] = useState(false);
   const [display_single_report,setdisplay_single_report]=useState(null);
   const [ismessage,setismessage]=useState(false);
-
+  const [selectedapp,setselectedapp]=useState(null);
   const [show_single_report,setshow_single_report]=useState(false)
   const [isresult,setisresult]=useState(false);
   const [messages, setMessages] = useState([]);
@@ -242,6 +242,7 @@ const DoctorDashboard = ({ activeView }) => {
       const repo=await axios.get("http://localhost:5500/getallreports",{
         withCredentials:true
       });
+      // console.log(repo.data)
       if(repo.data.reports){
         setallreports(repo.data.reports);
         setallpatient(repo.data.patient);
@@ -306,6 +307,7 @@ const DoctorDashboard = ({ activeView }) => {
   }
 
   const handlemainitems=async(doc)=>{
+    setselectedapp(doc)
     try{
       const getallmain=await axios.post("http://localhost:5500/getpatientmaindocument",doc,{
         withCredentials:true
@@ -362,6 +364,7 @@ const setreports=(report)=>{
   const matchedreport = Array.isArray(allreports)
   ? allreports.find((r) => r.patientEmail === report.patientEmail)
   : null;
+  console.log(matchedreport)
   setClickedviewreport(true);
   setopened_report(matchedreport);
   setpatient(matchedPatient);
@@ -369,12 +372,31 @@ const setreports=(report)=>{
 
 
 const displayreults=(doc)=>{
+  // console.log(doc)
+  // console.log(allreports)
   const matchedreport = Array.isArray(allreports)
-  ? allreports.find((r) => r.patientEmail === doc.email)
+  ? allreports.find((r) => r.email === doc.email)
   : null;
+  // console.log(matchedreport)
   setshow_single_report(true)
   setdisplay_single_report(matchedreport);
 
+}
+
+const handleendappointment=async(doc)=>{
+  console.log(selectedapp)
+  try{
+    const comapp=await axios.post("http://localhost:5500/completeappointment",
+      selectedapp,   
+      { withCredentials: true }       
+    )
+    if(comapp){
+      console.log(comapp)
+    }
+
+  }catch(err){
+    console.log(err)
+  }
 }
 
   
@@ -568,7 +590,7 @@ const displayreults=(doc)=>{
                 <div className="row">
                   <div className="label">CKD Stage (Target_Label)</div>
                   <div className="value">
-                    <span>{display_single_report.predict}</span>
+                    <span>{display_single_report.predict ? display_single_report.predict : "nan"}</span>
                   </div>
                 </div>
                 <div className="row">
@@ -801,6 +823,9 @@ const displayreults=(doc)=>{
                 
                 {/* Centered Boxes */}
                 <div className="d-flex gap-2 justify-content-center" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+                {isresult && (
+                  <button className='btn btn-secondary' onClick={()=>handleendappointment(selectedDocument,)}>Commplete appointment</button>
+                )}
                 {prediction && (
                   <div className="p-2 border rounded bg-light text-center" style={{ minWidth: "120px" }}>
                   <div className="small text-muted">Predicted Class</div>
@@ -1039,7 +1064,7 @@ const displayreults=(doc)=>{
               <FaDownload size={18} />
               Download PDF
             </button>
-
+{/* 
             <button
             aria-label="Close"
             onClick={() => setshow_single_report(false)}
@@ -1070,7 +1095,7 @@ const displayreults=(doc)=>{
             }}
           >
             ×
-          </button>
+          </button> */}
 
           </div>
           <div ref={reportRef}  className="ckd-report">
@@ -1160,42 +1185,42 @@ const displayreults=(doc)=>{
                   <tbody>
                     <tr>
                       <td>Serum creatinine (mg/dl)</td>
-                      <td>{display_single_report['Serum creatinine (mg/dl)']!=null ? display_single_report['Serum creatinine (mg/dl)'] :"nan"}</td>
+                      <td>{opened_report['Serum creatinine (mg/dl)']!=null ? opened_report['Serum creatinine (mg/dl)'] :"nan"}</td>
                       <td>0.6 – 1.3 mg/dl</td>
                       <td>
-                        <span className={display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{display_single_report['Serum creatinine (mg/dl)'] >= 0.6 && display_single_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
+                        <span className={opened_report['Serum creatinine (mg/dl)'] >= 0.6 && opened_report['Serum creatinine (mg/dl)']<=1.3 ? "badge ok":"badge warn"}>{opened_report['Serum creatinine (mg/dl)'] >= 0.6 && opened_report['Serum creatinine (mg/dl)']<=1.3 ? "Normal":"Abnormal"}</span>
                       </td>
                     </tr>
                     <tr>
                       <td>Blood urea (mg/dl)</td>
-                      <td>{display_single_report['Blood urea (mg/dl)']}</td>
+                      <td>{opened_report['Blood urea (mg/dl)']}</td>
                       <td>10 – 40 mg/dl</td>
                       <td>
-                        <span className={display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{display_single_report['Blood urea (mg/dl)'] >= 10 && display_single_report['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
+                        <span className={opened_report['Blood urea (mg/dl)'] >= 10 && opened_report['Blood urea (mg/dl)']<=40 ? "badge ok":"badge warn"}>{opened_report['Blood urea (mg/dl)'] >= 10 && opened_report['Blood urea (mg/dl)']<=40 ? "Normal":"Abnormal"}</span>
                       </td>
                     </tr>
                     <tr>
                       <td>Hemoglobin level (gms)</td>
-                      <td>{display_single_report['Hemoglobin level (gms)']}</td>
+                      <td>{opened_report['Hemoglobin level (gms)']}</td>
                       <td>12 – 16 g/dl (typical adult)</td>
                       <td>
-                        <span className={display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{display_single_report['Hemoglobin level (gms)'] >= 12 && display_single_report['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
+                        <span className={opened_report['Hemoglobin level (gms)'] >= 12 && opened_report['Hemoglobin level (gms)']<=16 ? "badge ok": "badge warn"}>{opened_report['Hemoglobin level (gms)'] >= 12 && opened_report['Hemoglobin level (gms)']<=16 ? "Normal":"Abnormal"}</span>
                       </td>
                     </tr>
                     <tr>
                       <td>Blood pressure (mm/Hg)</td>
-                      <td>{display_single_report['Blood pressure (mm/Hg)']}</td>
+                      <td>{opened_report['Blood pressure (mm/Hg)']}</td>
                       <td>90 – 130 mm/Hg</td>
                       <td>
-                        <span className={display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{display_single_report['Blood pressure (mm/Hg)'] >= 90 && display_single_report['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
+                        <span className={opened_report['Blood pressure (mm/Hg)'] >= 90 && opened_report['Blood pressure (mm/Hg)']<=130 ? "badge ok": "badge warn"}>{opened_report['Blood pressure (mm/Hg)'] >= 90 && opened_report['Blood pressure (mm/Hg)']<=130 ? "Normal":"Abnormal"}</span>
                       </td>
                     </tr>
                     <tr>
                       <td>Albumin in urine</td>
-                      <td>{display_single_report['Albumin in urine']}</td>
+                      <td>{opened_report['Albumin in urine']}</td>
                       <td>0 (negative)</td>
                       <td>
-                        <span className={display_single_report['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{display_single_report['Albumin in urine'] >= 90 && display_single_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
+                        <span className={opened_report['Albumin in urine'] <= 0 ? "badge ok" : "badge warn"}>{opened_report['Albumin in urine'] >= 90 && opened_report['Albumin in urine']<=130 ? "Normal":"Abnormal"}</span>
                       </td>
                     </tr>
                   </tbody>
