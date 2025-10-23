@@ -1,7 +1,9 @@
 // models/patient_details.js
 const mongoose = require('mongoose');
+require('dotenv').config(); // <-- add this line
 
-mongoose.connect("mongodb://localhost:27017/ckd", {
+const mongoURI = process.env.MONGO_URI;
+mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
