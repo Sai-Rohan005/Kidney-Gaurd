@@ -17,7 +17,11 @@ const createAuth = require('./auth');
 //start redis - brew services start redis
 //start db - mongod --dbpath ~/mongodb-data
 
-const redisClient = new Redis(process.env.REDIS_URL);
+// const redisClient = new Redis(process.env.REDIS_URL);
+const redisClient = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 const { login, getSession, logout } = createAuth(redisClient);
 
