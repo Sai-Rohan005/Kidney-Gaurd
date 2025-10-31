@@ -80,11 +80,11 @@ const Header = ({ onToggleSidebar }) => {
             <path d="M16 8c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 14c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z" fill="white"/>
             <circle cx="16" cy="16" r="3" fill="white"/>
           </svg>
-          <span className="logo-text">KidneyGuard</span>
+          <span className="logo-text">CKD-Net</span>
         </div>
       </div>
 
-      <div className="header-center">
+      {/* <div className="header-center">
         <div className="search-bar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"></circle>
@@ -92,7 +92,7 @@ const Header = ({ onToggleSidebar }) => {
           </svg>
           <input type="text" placeholder="Search patients, reports..." className="search-input" />
         </div>
-      </div>
+      </div> */}
 
       <div className="header-right">
         <button className="notification-btn">

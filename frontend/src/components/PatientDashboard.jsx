@@ -393,10 +393,11 @@ const PatientDashboard = ({ user, activeView, onBackToHome, defaultActiveTab }) 
 
         if(resp.data.message=='Clinical data saved'){
             alert("Data uploaded successfully");
+            e.target.reset();
         }else{
             alert(resp.data.message);
         }
-        e.target.reset();
+        
 
     }catch(err){
         console.log(err);

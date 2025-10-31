@@ -733,7 +733,7 @@ app.post('/changePassword', async (req, res) => {
 
 
 app.post("/predictckd", async (req, res) => {
-  console.log("called predict");
+  // console.log("called predict");
   // console.log(req.body)
   const pdetails  = req.body;
   const sessionData = await getSession(req.session.user.sessionToken);
@@ -747,7 +747,7 @@ app.post("/predictckd", async (req, res) => {
       // add timeout handling in production
     });
     const tabData = await tabResponse.json();
-    console.log(tabData.probabilities)
+    console.log(tabData)
     if (tabData.error) throw new Error(tabData.error);
     const tabArr = tabData.probabilities; // e.g. [0.2, 0.8]
 
@@ -783,8 +783,8 @@ app.post("/predictckd", async (req, res) => {
     if (tabArr.length !== unetAvg.length) {
       throw new Error("mismatched probability vector lengths");
     }
-    const results = unetAvg.map((p, i) => wUnet * p + wTab * tabArr[i]);
-
+    const results = unetAvg.map((p, i) => (wUnet * p) + (wTab * tabArr[i]));
+    console.log(results)
     // map index -> label
     const stage = ["notckd", "ckd"]; // ensure matches training labels
     const maxIndex = results.indexOf(Math.max(...results));

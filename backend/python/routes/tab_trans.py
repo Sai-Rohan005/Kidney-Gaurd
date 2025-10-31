@@ -135,36 +135,47 @@ async def predict(request: Request):
 
         # Preprocess input
         processed = preprocess_input(data, numerical_cols, categorical_cols)
-        df_single = pd.DataFrame(
-            [[processed[col] for col in numerical_cols + categorical_cols]],
-            columns=numerical_cols + categorical_cols
-        )
 
-        # Encode categorical columns
-        cats = ord_enc.transform(df_single[categorical_cols].astype(str)).astype(np.int64) + 1
-        cats_tensor = torch.tensor(cats, dtype=torch.long).to(device)
+        # Create single-row DataFrame in correct column order
+        df_single = pd.DataFrame([processed])
+
+        # Ensure numeric columns exist, fill missing with mean or 0
+        for col in numerical_cols:
+            if pd.isna(df_single.at[0, col]):
+                df_single.at[0, col] = 0.0
+
+        # Encode categorical columns (OrdinalEncoder expects 2D input)
+        cats = ord_enc.transform(df_single[categorical_cols].astype(str))
+        cats = np.array(cats, dtype=np.int64) + 1  # shift by +1 for padding_idx=0
+        cats_tensor = torch.tensor(cats, dtype=torch.long, device=device)
 
         # Scale numeric columns
-        nums = scaler.transform(df_single[numerical_cols]).astype(np.float32)
-        nums_tensor = torch.tensor(nums, dtype=torch.float32).to(device)
+        nums = scaler.transform(df_single[numerical_cols].astype(float))
+        nums_tensor = torch.tensor(nums, dtype=torch.float32, device=device)
+
+        # Ensure correct shape: (1, num_cats) and (1, num_nums)
+        if cats_tensor.ndim == 1:
+            cats_tensor = cats_tensor.unsqueeze(0)
+        if nums_tensor.ndim == 1:
+            nums_tensor = nums_tensor.unsqueeze(0)
 
         # Predict
         with torch.no_grad():
             logits = model(cats_tensor, nums_tensor)
             probs = F.softmax(logits, dim=1)
 
-            # Keep full precision, replace NaN/Inf if any
+            # Convert to NumPy
             probs_np = probs.cpu().numpy().squeeze(0)
-            probs_clean = np.nan_to_num(probs_np, nan=0.0, posinf=1.0, neginf=0.0)
-            probs_list = probs_clean.tolist()  # full precision
+            probs_list = probs_np.tolist()
 
-        pred_class_idx = logits.argmax(dim=1).item()
+        pred_class_idx = int(logits.argmax(dim=1).item())
         pred_class_label = y_le.inverse_transform([pred_class_idx])[0]
 
         return {
             "prediction": pred_class_label,
-            "probabilities": probs_list
+            "probabilities": probs_list  # e.g. [0.99916, 0.00083]
         }
+
 
     except Exception as e:
         import traceback
