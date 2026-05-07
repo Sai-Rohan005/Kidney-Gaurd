@@ -226,8 +226,10 @@ class TransUNet(nn.Module):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 transunet = TransUNet().to(device)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(BASE_DIR, "transunet1_kidney.pth")
-transunet.load_state_dict(torch.load(model_path, map_location=device))
+model_path = os.path.join(BASE_DIR, "transunet_kidney.pth")
+state_dict = torch.load(model_path, map_location=device)
+transunet.load_state_dict(state_dict, strict=False)  # ignore missing encoder keys
+transunet.eval()
 
 def extract_roi(image_np, mask_np):
     mask_bin = mask_np > 0.5
