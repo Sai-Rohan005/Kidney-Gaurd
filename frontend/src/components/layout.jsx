@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import axios from 'axios';
 import DoctorDashboard from './DoctorDashboard';
 import PatientDashboard from './PatientDashboard';
+import { useNavigate } from 'react-router-dom';
 
 const Layout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
@@ -14,6 +15,7 @@ const Layout = () => {
   useEffect(()=>{
     setIsMobile(window.innerWidth <= 768);
   },[])
+  const navigate=useNavigate();
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -33,6 +35,7 @@ const Layout = () => {
         }
       } catch (e) {
         console.log(e);
+        navigate('/login')
       }
     };
     fetchUserRole();

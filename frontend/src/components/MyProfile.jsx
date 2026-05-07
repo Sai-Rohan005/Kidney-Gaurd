@@ -28,6 +28,7 @@ const MyProfile = ({ user, onBack }) => {
           }
         }catch(e){
           console.log(e);
+          navigate('/login')
         }
     }
     const userdetails=async()=>{

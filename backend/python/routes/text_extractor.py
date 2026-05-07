@@ -1,4 +1,6 @@
-
+import os
+os.environ["TRANSFORMERS_NO_TF"] = "1"
+os.environ["TRANSFORMERS_NO_FLAX"] = "1"
 import cv2, numpy as np
 from PIL import Image
 from paddleocr import PaddleOCR
@@ -7,6 +9,7 @@ from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
 
 router = APIRouter()
+
 # 1) Init models
 ocr = PaddleOCR(use_angle_cls=True, lang='en')
 processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")

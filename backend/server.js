@@ -54,12 +54,12 @@ app.use(
   })
 );
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 app.use(express.json());
 
@@ -215,8 +215,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     console.log("Cloudinary Upload:", uploadResult);
 
     // Find patient using session
-    const sessionData = await getSession(req.session.user.sessionToken);
-    let pdetails = await patient_details.findOne({ email: sessionData.username });
+    const sessionData = await getSession(req.session?.user?.sessionToken);
+    let pdetails = await patient_details.findOne({ email: sessionData?.username });
 
     if (!pdetails) {
       // Create new patient if not exists
@@ -253,7 +253,7 @@ app.post('/clinical_data', async (req, res) => {
   const d = req.body;
 
   try {
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
 
     let pdetails = await patient_details.findOne({ email: sessionData.username });
 
@@ -282,7 +282,7 @@ app.post('/clinical_data', async (req, res) => {
 
 app.get('/getuploads',async(req,res)=>{
   try{
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     let pdetails = await patient_details.findOne({ email: sessionData.username });
     if(pdetails){
       if(pdetails.ultrasound_data.length==0){
@@ -310,7 +310,7 @@ app.post('/bookappointment',async(req,res)=>{
   try{
     const {doctor,date,time,problem}=req.body;
     // console.log(doctor,date,time);
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     let pdetails = await patient_details.findOne({ email: sessionData.username });
     let ddetails=await doctor_details.findOne({email:doctor});
     // if(!pdetails){
@@ -355,7 +355,7 @@ app.post('/bookappointment',async(req,res)=>{
 
 app.get('/getappointments',async(req,res)=>{
   try{
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     let pdetails = await patient_details.findOne({ email: sessionData.username });
     if(!pdetails){
       return res.json({message:"Patient details not found",status:404});
@@ -371,7 +371,7 @@ app.get('/getappointments',async(req,res)=>{
 })
 
 app.get('/getdoctorappointments',async(req,res)=>{
-  const sessionData = await getSession(req.session.user.sessionToken);
+  const sessionData = await getSession(req.session?.user?.sessionToken);
   try{
     let ddetails = await doctor_details.findOne({ email: sessionData.username });
     if(!ddetails){
@@ -388,7 +388,7 @@ app.get('/getdoctorappointments',async(req,res)=>{
 })
 
 app.post('/updatedoctorappointmentstatus',async(req,res)=>{
-  const sessionData = await getSession(req.session.user.sessionToken);
+  const sessionData = await getSession(req.session?.user?.sessionToken);
   try{
     const {patientEmail,date,time,status}=req.body;
     let ddetails = await doctor_details.findOne({ email: sessionData.username });
@@ -429,7 +429,7 @@ app.post('/updatedoctorappointmentstatus',async(req,res)=>{
 
 app.get('/getallreports', async (req, res) => {
   try {
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     const ddetails = await doctor_details.findOne({ email: sessionData.username });
 
     if (!ddetails)
@@ -500,7 +500,7 @@ app.get('/getallreports', async (req, res) => {
 
 app.get('/getpatientreport',async (req,res)=>{
   try {
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     const pdetails = await patient_details.findOne({ email: sessionData.username });
     if(pdetails.reports){
       return res.json({reports: pdetails.reports.at(-1), message: "Reports found", status: 200 });
@@ -513,7 +513,7 @@ app.get('/getpatientreport',async (req,res)=>{
 })
 app.get('/getpatientallreport',async (req,res)=>{
   try {
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     const pdetails = await patient_details.findOne({ email: sessionData.username });
     if(pdetails.reports){
       return res.json({reports: pdetails.reports, message: "Reports found", status: 200 });
@@ -526,7 +526,7 @@ app.get('/getpatientallreport',async (req,res)=>{
 })
 app.get('/getpdetails',async (req,res)=>{
   try {
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     const pdetails = await patient_details.findOne({ email: sessionData.username });
     if(pdetails){
       return res.json({pdetails: pdetails, message: "pdetails found", status: 200 });
@@ -542,7 +542,7 @@ app.get('/getpdetails',async (req,res)=>{
 app.post('/getpatientmaindocument',async(req,res)=>{
   // console.log(req.body);
   try{
-    // const sessionData = await getSession(req.session.user.sessionToken);
+    // const sessionData = await getSession(req.session?.user?.sessionToken);
     let pdetails = await patient_details.findOne({ email: req.body.patientEmail });
     if(!pdetails){
       return res.json({message:"Patient details not found",status:404});
@@ -559,7 +559,7 @@ app.post('/getpatientmaindocument',async(req,res)=>{
 
 app.post('/completeappointment', async (req, res) => {
   const { patientEmail, date } = req.body;
-  const sessionData = await getSession(req.session.user.sessionToken);
+  const sessionData = await getSession(req.session?.user?.sessionToken);
   try {
     const pdetails = await patient_details.findOne({ email: patientEmail });
 
@@ -622,11 +622,11 @@ app.post('/completeappointment', async (req, res) => {
 
 app.post('/logout', async (req, res) => {
   try {
-    if (!req.session.user) {
+    if (!req.session?.user || !req.session?.user?.sessionToken) {
       return res.status(400).json({ message: 'No active session' });
     }
 
-    await logout(req.session.user.sessionToken);
+    await logout(req.session?.user?.sessionToken);
 
     req.session.destroy((err) => {
       if (err) {
@@ -645,11 +645,11 @@ app.post('/logout', async (req, res) => {
 
 app.get('/getRole', async (req, res) => {
   try {
-    if (!req.session.user || !req.session.user.sessionToken) {
+    if (!req.session?.user || !req.session?.user?.sessionToken) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     if (!sessionData) {
       return res.status(401).json({ message: 'Session expired or invalid' });
     }
@@ -672,11 +672,11 @@ app.get('/getuser', async (req, res) => {
   // console.log("Session object:", req.session);
 
   try {
-    if (!req.session.user || !req.session.user.sessionToken) {
+    if (!req.session?.user || !req.session?.user?.sessionToken) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     if (!sessionData) {
       return res.status(401).json({ message: 'Session expired or invalid' });
     }
@@ -696,11 +696,11 @@ app.get('/getuser', async (req, res) => {
 
 app.post('/changePassword', async (req, res) => {
   try {
-    if (!req.session.user || !req.session.user.sessionToken) {
+    if (!req.session?.user || !req.session?.user?.sessionToken) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const sessionData = await getSession(req.session.user.sessionToken);
+    const sessionData = await getSession(req.session?.user?.sessionToken);
     if (!sessionData) {
       return res.status(401).json({ message: 'Session expired or invalid' });
     }
@@ -736,7 +736,7 @@ app.post("/predictckd", async (req, res) => {
   // console.log("called predict");
   // console.log(req.body)
   const pdetails  = req.body;
-  const sessionData = await getSession(req.session.user.sessionToken);
+  const sessionData = await getSession(req.session?.user?.sessionToken);
   try {
     // console.log(pdetails)
     // ---- Tabular data prediction ----

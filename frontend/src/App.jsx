@@ -42,10 +42,10 @@ function App() {
               <Route path="/login" element={<Auth />} />
               {/* <Route path="/dashboard" element={<Dashboard />} /> */}
               <Route path='/layout' element={<Layout/>}/>
-              <Route path="/patient-form" element={<PatientForm />} />
+              {/* <Route path="/patient-form" element={<PatientForm />} /> */}
               <Route path="/profile" element={<MyProfile />} />
-              <Route path="/patient-dashboard" element={<PatientDashboard />} />
-              <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+              {/* <Route path="/patient-dashboard" element={<PatientDashboard />} />
+              <Route path="/doctor-dashboard" element={<DoctorDashboard />} /> */}
               <Route path="/chat" element={<Chat />} />
             </Routes>
     

@@ -1,14 +1,22 @@
 import React, { useEffect,useState } from 'react'
 import './Sidebar.css'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 
+
+const navigate=useNavigate();
 
 const Sidebar = ({ activeView, setActiveView, isOpen, onAnalyticsClick }) => {
   const [userRole, setUserRole] = useState('Patient'); 
   useEffect(()=>{
     const getroles=async()=>{
-      const role=await axios.get("http://localhost:5500/getRole",{withCredentials:true})
-      setUserRole(role.data.role)
+      try{
+        const role=await axios.get("http://localhost:5500/getRole",{withCredentials:true})
+        setUserRole(role.data.role)
+      }catch(err){
+
+        navigate('/login')
+      }
     }
     getroles()
   },[])
