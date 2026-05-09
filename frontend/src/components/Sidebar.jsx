@@ -4,9 +4,9 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
 
-const navigate=useNavigate();
 
 const Sidebar = ({ activeView, setActiveView, isOpen, onAnalyticsClick }) => {
+  const navigate=useNavigate();
   const [userRole, setUserRole] = useState('Patient'); 
   useEffect(()=>{
     const getroles=async()=>{
